@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Gastos (con Firebase)</title>
+    <title>Control de Gastos (GitHub Pages)</title>
     <!-- 1. Cargamos Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 2. Configuración opcional de Tailwind y fuente -->
@@ -110,7 +110,7 @@
                         + Agregar Gasto
                     </button>
                     <!-- Indicador de guardado -->
-                    <span id="save-status" class="text-sm text-gray-500 font-medium"></span>
+                    <span id="save-status" class="text-sm text-gray-500 font-medium">Listo ✔</span>
                 </div>
             </div>
         </div>
@@ -121,14 +121,21 @@
     <script type="module">
         // --- IMPORTS DE FIREBASE ---
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
-        // Usamos las variables globales inyectadas por el entorno
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // *** CAMBIO 1: Configuración "Hardcoded" ---
+        // Esta es la configuración que me pasaste, ahora está en el código.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRq70PInWyj7pjYPGGqMQWaVe_tbrwebI",
+            authDomain: "mi-control-financiero-9099a.firebaseapp.com",
+            projectId: "mi-control-financiero-9099a",
+            storageBucket: "mi-control-financiero-9099a.firebasestorage.app",
+            messagingSenderId: "275253747474",
+            appId: "1:275253747474:web:79d7e7edeacd4d57799dcb"
+        };
         
         let app, auth, db, userId;
         // setLogLevel('Debug'); // Descomentar para ver logs detallados de Firestore
@@ -137,27 +144,27 @@
             
             // --- INICIALIZACIÓN DE FIREBASE Y AUTH ---
             try {
-                app = initializeApp(firebaseConfig);
+                app = initializeApp(firebaseConfig); // Usa la config de arriba
                 auth = getAuth(app);
                 db = getFirestore(app);
 
+                // *** CAMBIO 2: Lógica de Autenticación Simplificada ***
                 // Esperar a que la autenticación se complete
                 await new Promise((resolve, reject) => {
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
+                            // El usuario ya está logueado (anónimamente)
                             userId = user.uid;
                             resolve();
-                        } else if (initialAuthToken) {
-                            try {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                                // onAuthStateChanged se disparará de nuevo
-                            } catch (tokenError) {
-                                console.error("Error signing in with custom token:", tokenError);
-                                await signInAnonymously(auth); // Fallback
-                            }
                         } else {
-                            await signInAnonymously(auth);
-                            // onAuthStateChanged se disparará de nuevo
+                            // El usuario no está logueado, loguear anónimamente
+                            try {
+                                await signInAnonymously(auth);
+                                // onAuthStateChanged se disparará de nuevo
+                            } catch (authError) {
+                                console.error("Error signing in anonymously:", authError);
+                                reject(authError);
+                            }
                         }
                     }, (error) => {
                         console.error("Auth error:", error);
@@ -166,11 +173,12 @@
                 });
 
                 // Si llegamos aquí, userId está listo.
+                // ¡AHORA SÍ INICIAMOS LA LÓGICA DE LOS BOTONES!
                 initializeAppLogic();
 
             } catch (error) {
                 console.error("Error al inicializar Firebase:", error);
-                // Mostrar error al usuario
+                alert("Error fatal: No se pudo conectar a la base de datos. " + error.message);
             }
         });
 
@@ -205,6 +213,7 @@
             let saveTimeout; // Para el auto-guardado (debounce)
 
             // --- LÓGICA DE NAVEGACIÓN ---
+            // Esta función ahora SÍ se está "escuchando"
             goToRegisterBtn.addEventListener('click', () => {
                 mainMenu.classList.add('hidden');
                 registerView.classList.remove('hidden');
@@ -248,9 +257,6 @@
                 return `${dia}-${mes}`;
             }
 
-            /**
-             * Dibuja el grid (encabezado y filas) para un mes, cargando datos de Firestore.
-             */
             async function dibujarGrid(mesIndex) {
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
@@ -261,7 +267,8 @@
 
                 // --- OBTENER DATOS DE FIRESTORE ---
                 const docId = `${AÑO_ACTUAL}-${mesNum}`; // ej: "2025-10"
-                const docPath = `artifacts/${appId}/users/${userId}/registros/${docId}`;
+                // *** CAMBIO 3: Nueva ruta de base de datos ***
+                const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
                 let docData = null;
                 try {
@@ -290,7 +297,7 @@
 
                 // Actualizar fila de Sueldo (con datos)
                 sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
-                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
+                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sue</div>';
                 for (let i = 0; i < 5; i++) {
                     const sueldoValor = docData?.sueldo?.[i] || ""; // Cargar valor
                     const weekClass = (i === 4) ? 'week-5' : '';
@@ -322,9 +329,6 @@
                 saveStatusEl.textContent = "Listo ✔";
             }
 
-            /**
-             * Añade una nueva fila de gasto (opcionalmente con datos).
-             */
             function agregarFilaDeGasto(concepto = "", montos = []) {
                 const gastoRow = document.createElement('div');
                 gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
@@ -340,9 +344,6 @@
                 gridBody.appendChild(gastoRow);
             }
 
-            /**
-             * Calcula y muestra todos los totales (lógica sin cambios).
-             */
             function calcularTotales() {
                 const numSemanas = 5; 
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
@@ -378,23 +379,18 @@
                 });
             }
 
-            /**
-             * Dispara el auto-guardado con un retraso (debounce).
-             */
             function triggerSave() {
                 saveStatusEl.textContent = "Sincronizando...";
                 clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(guardarDatos, 1500); // 1.5 segundos después del último input
+                saveTimeout = setTimeout(guardarDatos, 1500); // 1.5 segundos
             }
 
-            /**
-             * Lee todos los datos del DOM y los guarda en Firestore.
-             */
             async function guardarDatos() {
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
                 const docId = `${AÑO_ACTUAL}-${mesIndex}`;
-                const docPath = `artifacts/${appId}/users/${userId}/registros/${docId}`;
+                // *** CAMBIO 3: Nueva ruta de base de datos ***
+                const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
 
                 // 1. Obtener datos de Sueldo
@@ -409,7 +405,6 @@
                     const montoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
                     const montos = Array.from(montoInputs).map(input => input.value);
                     
-                    // Solo guardar si hay concepto o algún monto
                     if (conceptoInput.value || montos.some(m => m)) {
                         gastosData.push({
                             concepto: conceptoInput.value,
@@ -424,7 +419,7 @@
                 };
 
                 try {
-                    await setDoc(docRef, dataPayload); // setDoc sobrescribe (o crea) el doc
+                    await setDoc(docRef, dataPayload); 
                     saveStatusEl.textContent = "Guardado ✔";
                 } catch (e) {
                     console.error("Error guardando datos: ", e);
@@ -443,13 +438,13 @@
             
             addRowBtn.addEventListener('click', () => {
                 agregarFilaDeGasto();
-                triggerSave(); // Guardar al añadir fila nueva
+                triggerSave(); 
             });
             
             gridBody.addEventListener('input', (e) => {
                 if(e.target.tagName === 'INPUT') {
-                    calcularTotales(); // Calcular en tiempo real
-                    triggerSave();    // Disparar auto-guardado
+                    calcularTotales(); 
+                    triggerSave();    
                 }
             });
         }

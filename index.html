@@ -2,11 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Gastos (GitHub Pages v2)</title>
-    <!-- 1. Cargamos Tailwind CSS -->
+    <!-- CAMBIO 1: Viewport Anti-Zoom. 
+         Aunque el cambio real está en el CSS de los inputs (font-size: 16px), 
+         aseguramos que el usuario no pueda hacer zoom manual.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Control de Gastos (PRO v1)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. Configuración opcional de Tailwind y fuente -->
     <script>
         tailwind.config = {
             theme: {
@@ -18,7 +20,6 @@
             },
         }
     </script>
-    <!-- 3. Estilos CSS adicionales -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -37,6 +38,11 @@
         }
         #grid-wrapper[data-weeks="4"] .week-5 {
             display: none;
+        }
+        /* CAMBIO 1 (la parte más importante): 
+           Forzar 16px en los inputs para evitar el auto-zoom de iOS */
+        input[type="number"], input[type="text"], textarea {
+            font-size: 16px !important;
         }
     </style>
 </head>
@@ -70,7 +76,7 @@
                 <h2 class="text-3xl font-bold text-gray-900 text-center md:text-left md:flex-1 md:ml-4">
                     Registro de Pagos
                 </h2>
-                <select id="month-select" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 self-center md:self-auto">
+                <select id="month-select" class="bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 self-center md:self-auto text-base">
                     <!-- Opciones de mes -->
                 </select>
             </div>
@@ -82,7 +88,7 @@
                     <!-- Wrapper del Grid -->
                     <div id="grid-wrapper" class="min-w-[800px] md:min-w-full" data-weeks="5">
                         <!-- Encabezado del Grid -->
-                        <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2">
+                        <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2 text-base">
                             <!-- Se genera con JS -->
                         </div>
                         <!-- Cuerpo del Grid -->
@@ -106,12 +112,40 @@
 
                 <!-- Botones de Acción -->
                 <div class="bg-white p-4 border-t border-gray-200 flex justify-between items-center">
-                    <button id="add-row-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-sm">
+                    <button id="add-row-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-base">
                         + Agregar Gasto
                     </button>
                     <!-- Indicador de guardado -->
                     <span id="save-status" class="text-sm text-gray-500 font-medium">Listo ✔</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAMBIO 3: MODAL PARA GASTOS DETALLADOS -->
+    <div id="item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+            <!-- Título del Modal -->
+            <div class="p-6 border-b border-gray-200">
+                <h3 id="modal-title" class="text-xl font-semibold text-gray-900">
+                    Detalle del Gasto
+                </h3>
+                <p id="modal-subtitle" class="text-sm text-gray-500">Escribe cada item en una línea (ej: Carne 250)</p>
+            </div>
+            
+            <!-- Contenido (Textarea) -->
+            <div class="p-6">
+                <textarea id="modal-textarea" rows="8" class="w-full border border-gray-300 rounded-lg p-3 text-base font-mono focus:ring-blue-500 focus:border-blue-500" placeholder="Leche 50.50&#10;Pan 22&#10;Verdura 130"></textarea>
+            </div>
+            
+            <!-- Botones de Acción del Modal -->
+            <div class="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl">
+                <button id="modal-close-btn" class="bg-white hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 transition-all text-base">
+                    Cerrar
+                </button>
+                <button id="modal-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base">
+                    Guardar y Calcular
+                </button>
             </div>
         </div>
     </div>
@@ -125,8 +159,6 @@
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
-        
-        // Configuración "Hardcoded"
         const firebaseConfig = {
             apiKey: "AIzaSyDRq70PInWyj7pjYPGGqMQWaVe_tbrwebI",
             authDomain: "mi-control-financiero-9099a.firebaseapp.com",
@@ -140,14 +172,11 @@
         // setLogLevel('Debug'); 
 
         document.addEventListener('DOMContentLoaded', async () => {
-            
-            // --- INICIALIZACIÓN DE FIREBASE Y AUTH ---
             try {
                 app = initializeApp(firebaseConfig); 
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Lógica de Autenticación Simplificada
                 await new Promise((resolve, reject) => {
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
@@ -156,7 +185,6 @@
                         } else {
                             try {
                                 await signInAnonymously(auth);
-                                // onAuthStateChanged se disparará de nuevo
                             } catch (authError) {
                                 console.error("Error signing in anonymously:", authError);
                                 reject(authError);
@@ -168,7 +196,6 @@
                     });
                 });
 
-                // ¡AHORA SÍ INICIAMOS LA LÓGICA DE LOS BOTONES!
                 initializeAppLogic();
 
             } catch (error) {
@@ -193,6 +220,16 @@
             const totalsGastosRow = document.getElementById('totals-gastos-row');
             const totalsRestanteRow = document.getElementById('totals-restante-row');
             const saveStatusEl = document.getElementById('save-status');
+
+            // --- Modal DOM ---
+            const itemModal = document.getElementById('item-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalSubtitle = document.getElementById('modal-subtitle');
+            const modalTextarea = document.getElementById('modal-textarea');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalSaveBtn = document.getElementById('modal-save-btn');
+            
+            let currentModalInput = null; // Guardará el input (casilla) que abrimos
 
             const AÑO_ACTUAL = new Date().getFullYear();
             const MESES = [
@@ -259,7 +296,7 @@
                 gridWrapper.dataset.weeks = numSemanas;
 
                 // --- OBTENER DATOS DE FIRESTORE ---
-                const docId = `${AÑO_ACTUAL}-${mesNum}`; // ej: "2025-10"
+                const docId = `${AÑO_ACTUAL}-${mesNum}`; 
                 const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
                 let docData = null;
@@ -289,21 +326,21 @@
 
                 // Actualizar fila de Sueldo (con datos)
                 sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
-                
-                // *** CAMBIO 1: "Sue" -> "Sueldo" ***
                 let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
                 
                 for (let i = 0; i < 5; i++) {
                     const sueldoValor = docData?.sueldo?.[i] || ""; // Cargar valor
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold ${weekClass}">`;
+                    // CAMBIO 1: Agregado 'text-base' para evitar zoom
+                    sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold text-base ${weekClass}">`;
                 }
                 sueldoRow.innerHTML = sueldoHTML;
                 
                 // Dibujar filas de Gasto (con datos)
                 if (docData && docData.gastos && docData.gastos.length > 0) {
                     docData.gastos.forEach(gasto => {
-                        agregarFilaDeGasto(gasto.concepto, gasto.montos);
+                        // CAMBIO 3: Pasamos 'detalles' a la función
+                        agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles);
                     });
                 } else {
                     agregarFilaDeGasto(); // Añadir una fila vacía si no hay datos
@@ -314,8 +351,8 @@
                 let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
                 for (let i = 0; i < 5; i++) {
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded ${weekClass}">$0.00</div>`;
-                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold ${weekClass}">$0.00</div>`;
+                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded text-base ${weekClass}">$0.00</div>`;
+                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold text-base ${weekClass}">$0.00</div>`;
                 }
                 totalsGastosRow.innerHTML = totalGastoHTML;
                 totalsRestanteRow.innerHTML = totalRestanteHTML;
@@ -324,16 +361,29 @@
                 saveStatusEl.textContent = "Listo ✔";
             }
 
-            function agregarFilaDeGasto(concepto = "", montos = []) {
+            // CAMBIO 3: La función ahora acepta 'detalles'
+            function agregarFilaDeGasto(concepto = "", montos = [], detalles = []) {
                 const gastoRow = document.createElement('div');
                 gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
                 gastoRow.dataset.rowType = "gasto";
+                // CAMBIO 3: Guardamos los detalles en el DOM para el modal
+                gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
 
-                let gastoHTML = `<input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 sticky left-0 z-5">`;
+                // CAMBIO 2: Se agrega un div con flex para el input y el botón de borrar
+                let gastoHTML = `
+                    <div class="sticky left-0 z-5 flex items-center gap-2 bg-white pr-2">
+                        <input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
+                        <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>`;
+                
                 for (let i = 0; i < 5; i++) {
                     const montoValor = montos[i] || ""; // Cargar valor
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" class="bg-yellow-100 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono ${weekClass}">`;
+                    // CAMBIO 3: Agregado 'readonly' y 'cursor-pointer'
+                    // CAMBIO 1: Agregado 'text-base'
+                    gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" readonly class="bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200 ${weekClass}">`;
                 }
                 gastoRow.innerHTML = gastoHTML;
                 gridBody.appendChild(gastoRow);
@@ -365,11 +415,9 @@
                 const celdasTotalRestante = totalsRestanteRow.querySelectorAll('div:not(:first-child)');
 
                 celdasTotalGasto.forEach((celda, index) => {
-                    // *** CAMBIO 2: Añadir $ ***
                     celda.textContent = `$${totalesGasto[index].toFixed(2)}`;
                 });
                 celdasTotalRestante.forEach((celda, index) => {
-                    // *** CAMBIO 2: Añadir $ ***
                     celda.textContent = `$${totalesRestante[index].toFixed(2)}`;
                     celda.classList.toggle('text-green-600', totalesRestante[index] >= 0);
                     celda.classList.toggle('text-red-600', totalesRestante[index] < 0);
@@ -379,7 +427,7 @@
             function triggerSave() {
                 saveStatusEl.textContent = "Sincronizando...";
                 clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(guardarDatos, 1500); // 1.5 segundos
+                saveTimeout = setTimeout(guardarDatos, 1500);
             }
 
             async function guardarDatos() {
@@ -389,22 +437,23 @@
                 const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
 
-                // 1. Obtener datos de Sueldo
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
                 const sueldoData = Array.from(sueldoInputs).map(input => input.value);
 
-                // 2. Obtener datos de Gastos
                 const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]');
                 const gastosData = [];
                 filasGastos.forEach(fila => {
                     const conceptoInput = fila.querySelector('input[type="text"]');
                     const montoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
                     const montos = Array.from(montoInputs).map(input => input.value);
+                    // CAMBIO 3: Leemos los detalles del dataset
+                    const detalles = JSON.parse(fila.dataset.detalles || '["","","","",""]');
                     
                     if (conceptoInput.value || montos.some(m => m)) {
                         gastosData.push({
                             concepto: conceptoInput.value,
-                            montos: montos
+                            montos: montos,
+                            detalles: detalles // CAMBIO 3: Guardamos los detalles
                         });
                     }
                 });
@@ -423,24 +472,120 @@
                 }
             }
 
+            // --- LÓGICA DEL MODAL (CAMBIO 3) ---
+
+            /**
+             * Parsea el texto del textarea y suma los números.
+             */
+            function parseAndSum(text) {
+                let total = 0;
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    // Busca números (enteros o decimales) en la línea
+                    const matches = line.match(/([\d\.]+)/g);
+                    if (matches) {
+                        // Suma el último número encontrado en la línea
+                        total += parseFloat(matches[matches.length - 1]) || 0;
+                    }
+                }
+                return total;
+            }
+
+            /**
+             * Abre el modal y lo configura para el input seleccionado.
+             */
+            function openItemModal(input) {
+                currentModalInput = input;
+                const row = input.closest('[data-row-type="gasto"]');
+                const concepto = row.querySelector('input[type="text"]').value || "Gasto";
+                
+                const inputs = Array.from(row.querySelectorAll('[data-name="gasto-input"]'));
+                const weekIndex = inputs.indexOf(input);
+                const weekLabel = document.querySelectorAll('#grid-header div')[weekIndex + 1].textContent;
+
+                modalTitle.textContent = `Detalles: ${concepto}`;
+                modalSubtitle.textContent = `Semana de ${weekLabel}`;
+                
+                const detalles = JSON.parse(row.dataset.detalles || '["","","","",""]');
+                modalTextarea.value = detalles[weekIndex] || "";
+                
+                itemModal.classList.remove('hidden');
+                modalTextarea.focus();
+            }
+
             // --- INICIALIZACIÓN DE LA APP ---
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
 
             // --- EVENT LISTENERS ---
             monthSelect.addEventListener('change', (e) => {
-                dibujarGrid(e.target.value); F            });
+                dibujarGrid(e.target.value); 
+            });
             
             addRowBtn.addEventListener('click', () => {
                 agregarFilaDeGasto();
                 triggerSave(); 
             });
             
+            // Listener para inputs (Sueldo y Concepto)
             gridBody.addEventListener('input', (e) => {
                 if(e.target.tagName === 'INPUT') {
-                    calcularTotales(); 
-                    triggerSave();    
+                    // Solo calcular y guardar si es input de sueldo o de texto (concepto)
+                    if (e.target.dataset.name === 'sueldo-input' || e.target.type === 'text') {
+                        calcularTotales(); 
+                        triggerSave();    
+                    }
                 }
+            });
+
+            // Listener para CLICS (Borrar y Abrir Modal)
+            gridBody.addEventListener('click', (e) => {
+                // CAMBIO 2: Lógica para el botón de borrar
+                const deleteBtn = e.target.closest('.delete-gasto-btn');
+                if (deleteBtn) {
+                    const row = deleteBtn.closest('[data-row-type="gasto"]');
+                    row.remove();
+                    calcularTotales();
+                    triggerSave();
+                    return; // Importante para no hacer las dos acciones
+                }
+
+                // CAMBIO 3: Lógica para abrir el modal
+                const gastoInput = e.target.closest('[data-name="gasto-input"]');
+                if (gastoInput) {
+                    openItemModal(gastoInput);
+                }
+            });
+
+            // Listeners del Modal
+            modalCloseBtn.addEventListener('click', () => {
+                itemModal.classList.add('hidden');
+                currentModalInput = null;
+            });
+
+            modalSaveBtn.addEventListener('click', () => {
+                if (!currentModalInput) return;
+
+                const text = modalTextarea.value;
+                const sum = parseAndSum(text);
+
+                // 1. Poner el total en la casilla amarilla
+                currentModalInput.value = sum.toFixed(2);
+
+                // 2. Guardar el texto en el dataset de la fila
+                const row = currentModalInput.closest('[data-row-type="gasto"]');
+                const inputs = Array.from(row.querySelectorAll('[data-name="gasto-input"]'));
+                const weekIndex = inputs.indexOf(currentModalInput);
+                
+                let detalles = JSON.parse(row.dataset.detalles || '["","","","",""]');
+                detalles[weekIndex] = text;
+                row.dataset.detalles = JSON.stringify(detalles);
+
+                // 3. Cerrar, recalcular y guardar
+                itemModal.classList.add('hidden');
+                currentModalInput = null;
+                calcularTotales();
+                triggerSave();
             });
         }
     </script>

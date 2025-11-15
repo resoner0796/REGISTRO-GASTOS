@@ -2,12 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- CAMBIO 1: Viewport Anti-Zoom. 
-         Aunque el cambio real está en el CSS de los inputs (font-size: 16px), 
-         aseguramos que el usuario no pueda hacer zoom manual.
-    -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (PRO v1)</title>
+    <title>Control de Gastos (Caja de Ahorro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -39,10 +35,32 @@
         #grid-wrapper[data-weeks="4"] .week-5 {
             display: none;
         }
-        /* CAMBIO 1 (la parte más importante): 
-           Forzar 16px en los inputs para evitar el auto-zoom de iOS */
         input[type="number"], input[type="text"], textarea {
-            font-size: 16px !important;
+            font-size: 16px !important; /* Anti-zoom iOS */
+        }
+        /* Estilos para el log de movimientos */
+        #caja-log li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+        }
+        #caja-log li:last-child {
+            border-bottom: none;
+        }
+        #caja-log .log-concepto {
+            font-size: 0.9rem;
+        }
+        #caja-log .log-fecha {
+            font-size: 0.75rem;
+            color: #6b7280; /* gray-500 */
+        }
+        #caja-log .log-monto.deposito {
+            color: #16a34a; /* green-600 */
+        }
+        #caja-log .log-monto.retiro {
+            color: #dc2626; /* red-600 */
         }
     </style>
 </head>
@@ -119,26 +137,49 @@
                     <span id="save-status" class="text-sm text-gray-500 font-medium">Listo ✔</span>
                 </div>
             </div>
+
+            <!-- ****** NUEVO: PANEL DE CAJA DE AHORRO ****** -->
+            <div id="caja-ahorro-view" class="mt-8 bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Caja de Ahorro</h3>
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div class="text-center md:text-left">
+                            <p class="text-sm font-medium text-gray-500 uppercase">Saldo Actual</p>
+                            <p id="caja-saldo" class="text-4xl font-bold text-green-600">$0.00</p>
+                        </div>
+                        <div class="flex gap-3 justify-center">
+                            <button id="caja-retiro-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                                Retirar
+                            </button>
+                            <button id="caja-deposito-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                                Depositar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-6 border-t border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos</h4>
+                    <ul id="caja-log" class="space-y-2 max-h-48 overflow-y-auto">
+                        <!-- Movimientos se cargan aquí -->
+                        <li class="text-center text-gray-500 py-4">Cargando movimientos...</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- ****** FIN DE PANEL ****** -->
+
         </div>
     </div>
 
-    <!-- CAMBIO 3: MODAL PARA GASTOS DETALLADOS -->
+    <!-- MODAL 1: GASTOS DETALLADOS -->
     <div id="item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
-            <!-- Título del Modal -->
             <div class="p-6 border-b border-gray-200">
-                <h3 id="modal-title" class="text-xl font-semibold text-gray-900">
-                    Detalle del Gasto
-                </h3>
+                <h3 id="modal-title" class="text-xl font-semibold text-gray-900">Detalle del Gasto</h3>
                 <p id="modal-subtitle" class="text-sm text-gray-500">Escribe cada item en una línea (ej: Carne 250)</p>
             </div>
-            
-            <!-- Contenido (Textarea) -->
             <div class="p-6">
                 <textarea id="modal-textarea" rows="8" class="w-full border border-gray-300 rounded-lg p-3 text-base font-mono focus:ring-blue-500 focus:border-blue-500" placeholder="Leche 50.50&#10;Pan 22&#10;Verdura 130"></textarea>
             </div>
-            
-            <!-- Botones de Acción del Modal -->
             <div class="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl">
                 <button id="modal-close-btn" class="bg-white hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 transition-all text-base">
                     Cerrar
@@ -150,13 +191,45 @@
         </div>
     </div>
 
+    <!-- ****** NUEVO: MODAL 2: CAJA DE AHORRO ****** -->
+    <div id="caja-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+            <div class="p-6 border-b border-gray-200">
+                <h3 id="caja-modal-title" class="text-xl font-semibold text-gray-900">
+                    Realizar Movimiento
+                </h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label for="caja-modal-monto" class="block text-sm font-medium text-gray-700 mb-1">Monto</label>
+                    <input type="number" id="caja-modal-monto" class="w-full border border-gray-300 rounded-lg p-3 text-base font-mono focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                    <p id="caja-modal-error" class="text-sm text-red-600 mt-1 hidden">Fondos insuficientes</p>
+                </div>
+                <div>
+                    <label for="caja-modal-concepto" class="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
+                    <input type="text" id="caja-modal-concepto" class="w-full border border-gray-300 rounded-lg p-3 text-base focus:ring-blue-500 focus:border-blue-500" placeholder="(Ej: Ahorro Semana 1)">
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl">
+                <button id="caja-modal-close-btn" class="bg-white hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 transition-all text-base">
+                    Cancelar
+                </button>
+                <button id="caja-modal-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 4. TODO EL CÓDIGO JAVASCRIPT (AHORA COMO MÓDULO) -->
     <script type="module">
-        // --- IMPORTS DE FIREBASE ---
+        // --- IMPORTS DE FIREBASE (NUEVOS AÑADIDOS) ---
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getFirestore, doc, getDoc, setDoc, runTransaction, 
+            collection, onSnapshot, query, orderBy, limit, serverTimestamp, addDoc 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
         const firebaseConfig = {
@@ -169,6 +242,12 @@
         };
         
         let app, auth, db, userId;
+        
+        // --- NUEVO: Refs de Caja de Ahorro ---
+        let cajaDocRef, cajaLogColRef;
+        let saldoActualGlobal = 0;
+        let tipoMovimientoActual = 'deposito'; // 'deposito' o 'retiro'
+        
         // setLogLevel('Debug'); 
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -181,6 +260,9 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             userId = user.uid;
+                            // --- NUEVO: Definir refs aquí ---
+                            cajaDocRef = doc(db, 'usuarios', userId, 'ahorro', 'caja');
+                            cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
                             resolve();
                         } else {
                             try {
@@ -206,7 +288,7 @@
 
         // --- TODA LA LÓGICA DE LA APP ---
         function initializeAppLogic() {
-            // --- SELECCIÓN DE ELEMENTOS DEL DOM ---
+            // --- SELECCIÓN DE ELEMENTOS DEL DOM (GRID) ---
             const mainMenu = document.getElementById('main-menu');
             const registerView = document.getElementById('register-view');
             const goToRegisterBtn = document.getElementById('goToRegisterBtn');
@@ -221,15 +303,29 @@
             const totalsRestanteRow = document.getElementById('totals-restante-row');
             const saveStatusEl = document.getElementById('save-status');
 
-            // --- Modal DOM ---
+            // --- Modal Gasto DOM ---
             const itemModal = document.getElementById('item-modal');
             const modalTitle = document.getElementById('modal-title');
             const modalSubtitle = document.getElementById('modal-subtitle');
             const modalTextarea = document.getElementById('modal-textarea');
             const modalCloseBtn = document.getElementById('modal-close-btn');
             const modalSaveBtn = document.getElementById('modal-save-btn');
-            
-            let currentModalInput = null; // Guardará el input (casilla) que abrimos
+            let currentModalInput = null; 
+
+            // --- NUEVO: Caja de Ahorro DOM ---
+            const cajaSaldoEl = document.getElementById('caja-saldo');
+            const cajaLogEl = document.getElementById('caja-log');
+            const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
+            const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
+
+            // --- NUEVO: Modal Caja DOM ---
+            const cajaModal = document.getElementById('caja-modal');
+            const cajaModalTitle = document.getElementById('caja-modal-title');
+            const cajaModalMonto = document.getElementById('caja-modal-monto');
+            const cajaModalConcepto = document.getElementById('caja-modal-concepto');
+            const cajaModalError = document.getElementById('caja-modal-error');
+            const cajaModalCloseBtn = document.getElementById('caja-modal-close-btn');
+            const cajaModalSaveBtn = document.getElementById('caja-modal-save-btn');
 
             const AÑO_ACTUAL = new Date().getFullYear();
             const MESES = [
@@ -254,7 +350,8 @@
                 mainMenu.classList.remove('hidden');
             });
 
-            // --- LÓGICA PRINCIPAL DEL REGISTRO ---
+            // --- LÓGICA PRINCIPAL DEL REGISTRO (GRID) ---
+            // (Funciones getThursdays, formatDate, popularMeses... sin cambios)
 
             function popularMeses() {
                 const mesActual = new Date().getMonth();
@@ -295,7 +392,6 @@
                 
                 gridWrapper.dataset.weeks = numSemanas;
 
-                // --- OBTENER DATOS DE FIRESTORE ---
                 const docId = `${AÑO_ACTUAL}-${mesNum}`; 
                 const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
@@ -310,7 +406,7 @@
                     saveStatusEl.textContent = "Error al cargar ❌";
                 }
 
-                // --- 1. Dibujar Encabezado ---
+                // 1. Dibujar Encabezado
                 let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
                 for (let i = 0; i < 5; i++) {
                     const date = thursdays[i];
@@ -320,33 +416,29 @@
                 }
                 gridHeader.innerHTML = headerHTML;
 
-                // --- 2. Dibujar Cuerpo ---
+                // 2. Dibujar Cuerpo
                 const gastosAnteriores = gridBody.querySelectorAll('[data-row-type="gasto"]');
                 gastosAnteriores.forEach(gasto => gasto.remove());
 
-                // Actualizar fila de Sueldo (con datos)
                 sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
                 let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
                 
                 for (let i = 0; i < 5; i++) {
-                    const sueldoValor = docData?.sueldo?.[i] || ""; // Cargar valor
+                    const sueldoValor = docData?.sueldo?.[i] || ""; 
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    // CAMBIO 1: Agregado 'text-base' para evitar zoom
                     sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold text-base ${weekClass}">`;
                 }
                 sueldoRow.innerHTML = sueldoHTML;
                 
-                // Dibujar filas de Gasto (con datos)
                 if (docData && docData.gastos && docData.gastos.length > 0) {
                     docData.gastos.forEach(gasto => {
-                        // CAMBIO 3: Pasamos 'detalles' a la función
                         agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles);
                     });
                 } else {
-                    agregarFilaDeGasto(); // Añadir una fila vacía si no hay datos
+                    agregarFilaDeGasto(); 
                 }
 
-                // --- 3. Dibujar Pie (Totales) ---
+                // 3. Dibujar Pie (Totales)
                 let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
                 let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
                 for (let i = 0; i < 5; i++) {
@@ -361,15 +453,12 @@
                 saveStatusEl.textContent = "Listo ✔";
             }
 
-            // CAMBIO 3: La función ahora acepta 'detalles'
             function agregarFilaDeGasto(concepto = "", montos = [], detalles = []) {
                 const gastoRow = document.createElement('div');
                 gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
                 gastoRow.dataset.rowType = "gasto";
-                // CAMBIO 3: Guardamos los detalles en el DOM para el modal
                 gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
 
-                // CAMBIO 2: Se agrega un div con flex para el input y el botón de borrar
                 let gastoHTML = `
                     <div class="sticky left-0 z-5 flex items-center gap-2 bg-white pr-2">
                         <input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
@@ -379,10 +468,8 @@
                     </div>`;
                 
                 for (let i = 0; i < 5; i++) {
-                    const montoValor = montos[i] || ""; // Cargar valor
+                    const montoValor = montos[i] || ""; 
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    // CAMBIO 3: Agregado 'readonly' y 'cursor-pointer'
-                    // CAMBIO 1: Agregado 'text-base'
                     gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" readonly class="bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200 ${weekClass}">`;
                 }
                 gastoRow.innerHTML = gastoHTML;
@@ -446,14 +533,13 @@
                     const conceptoInput = fila.querySelector('input[type="text"]');
                     const montoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
                     const montos = Array.from(montoInputs).map(input => input.value);
-                    // CAMBIO 3: Leemos los detalles del dataset
                     const detalles = JSON.parse(fila.dataset.detalles || '["","","","",""]');
                     
                     if (conceptoInput.value || montos.some(m => m)) {
                         gastosData.push({
                             concepto: conceptoInput.value,
                             montos: montos,
-                            detalles: detalles // CAMBIO 3: Guardamos los detalles
+                            detalles: detalles 
                         });
                     }
                 });
@@ -472,28 +558,20 @@
                 }
             }
 
-            // --- LÓGICA DEL MODAL (CAMBIO 3) ---
+            // --- LÓGICA DEL MODAL (GASTOS) ---
 
-            /**
-             * Parsea el texto del textarea y suma los números.
-             */
             function parseAndSum(text) {
                 let total = 0;
                 const lines = text.split('\n');
                 for (const line of lines) {
-                    // Busca números (enteros o decimales) en la línea
                     const matches = line.match(/([\d\.]+)/g);
                     if (matches) {
-                        // Suma el último número encontrado en la línea
                         total += parseFloat(matches[matches.length - 1]) || 0;
                     }
                 }
                 return total;
             }
 
-            /**
-             * Abre el modal y lo configura para el input seleccionado.
-             */
             function openItemModal(input) {
                 currentModalInput = input;
                 const row = input.closest('[data-row-type="gasto"]');
@@ -513,11 +591,136 @@
                 modalTextarea.focus();
             }
 
+            // --- NUEVO: LÓGICA DE CAJA DE AHORRO ---
+
+            function iniciarListenersCaja() {
+                // 1. Listener para el Saldo
+                onSnapshot(cajaDocRef, (doc) => {
+                    if (doc.exists()) {
+                        saldoActualGlobal = doc.data().saldoActual || 0;
+                    } else {
+                        // Si no existe, lo creamos
+                        setDoc(cajaDocRef, { saldoActual: 0 })
+                            .catch(e => console.error("Error inicializando caja:", e));
+                        saldoActualGlobal = 0;
+                    }
+                    cajaSaldoEl.textContent = `$${saldoActualGlobal.toFixed(2)}`;
+                });
+
+                // 2. Listener para los Movimientos (Log)
+                const logQuery = query(cajaLogColRef, orderBy("fecha", "desc"), limit(10));
+                onSnapshot(logQuery, (snapshot) => {
+                    cajaLogEl.innerHTML = ""; // Limpiar
+                    if (snapshot.empty) {
+                        cajaLogEl.innerHTML = '<li class="text-center text-gray-500">No hay movimientos.</li>';
+                        return;
+                    }
+                    snapshot.docs.forEach(doc => {
+                        const data = doc.data();
+                        const monto = data.monto.toFixed(2);
+                        const tipo = data.tipo;
+                        const fecha = data.fecha ? data.fecha.toDate().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '...';
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <p class="log-concepto">${data.concepto || tipo}</p>
+                                <p class="log-fecha">${fecha}</p>
+                            </div>
+                            <span class="log-monto ${tipo} font-bold font-mono">
+                                ${tipo === 'deposito' ? '+' : '-'}$${monto}
+                            </span>
+                        `;
+                        cajaLogEl.appendChild(li);
+                    });
+                });
+            }
+
+            function openCajaModal(tipo) {
+                tipoMovimientoActual = tipo;
+                cajaModal.classList.remove('hidden');
+                cajaModalMonto.value = "";
+                cajaModalConcepto.value = "";
+                cajaModalError.classList.add('hidden');
+                cajaModalSaveBtn.disabled = false;
+
+                if (tipo === 'deposito') {
+                    cajaModalTitle.textContent = "Depositar en Ahorros";
+                    cajaModalSaveBtn.className = "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
+                } else { // retiro
+                    cajaModalTitle.textContent = "Retirar de Ahorros";
+                    cajaModalSaveBtn.className = "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
+                }
+                cajaModalMonto.focus();
+            }
+
+            async function handleCajaSave() {
+                const monto = parseFloat(cajaModalMonto.value) || 0;
+                let concepto = cajaModalConcepto.value || (tipoMovimientoActual === 'deposito' ? 'Depósito' : 'Retiro');
+                
+                if (monto <= 0) {
+                    cajaModalError.textContent = "El monto debe ser positivo";
+                    cajaModalError.classList.remove('hidden');
+                    return;
+                }
+
+                if (tipoMovimientoActual === 'retiro' && monto > saldoActualGlobal) {
+                    cajaModalError.textContent = "Fondos insuficientes";
+                    cajaModalError.classList.remove('hidden');
+                    return;
+                }
+
+                cajaModalSaveBtn.disabled = true;
+                cajaModalSaveBtn.textContent = "Guardando...";
+
+                try {
+                    // Usamos una transacción para asegurar que el saldo y el log estén sincronizados
+                    await runTransaction(db, async (transaction) => {
+                        const cajaDoc = await transaction.get(cajaDocRef);
+                        const saldoPrevio = cajaDoc.data().saldoActual || 0;
+                        
+                        let nuevoSaldo;
+                        if (tipoMovimientoActual === 'deposito') {
+                            nuevoSaldo = saldoPrevio + monto;
+                        } else {
+                            if (saldoPrevio < monto) {
+                                throw new Error("Fondos insuficientes");
+                            }
+                            nuevoSaldo = saldoPrevio - monto;
+                        }
+
+                        // 1. Actualizar el saldo
+                        transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
+
+                        // 2. Escribir el log
+                        const newLogRef = doc(cajaLogColRef); // Crea ref con ID automático
+                        transaction.set(newLogRef, {
+                            tipo: tipoMovimientoActual,
+                            monto: monto,
+                            concepto: concepto,
+                            fecha: serverTimestamp() // Usar fecha del servidor
+                        });
+                    });
+
+                    // Si la transacción fue exitosa
+                    cajaModal.classList.add('hidden');
+
+                } catch (e) {
+                    console.error("Error en la transacción de ahorro: ", e);
+                    cajaModalError.textContent = `Error: ${e.message}`;
+                    cajaModalError.classList.remove('hidden');
+                }
+
+                cajaModalSaveBtn.disabled = false;
+                cajaModalSaveBtn.textContent = "Confirmar";
+            }
+
             // --- INICIALIZACIÓN DE LA APP ---
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
+            iniciarListenersCaja(); // NUEVO: Iniciar listeners de la caja
 
-            // --- EVENT LISTENERS ---
+            // --- EVENT LISTENERS (GRID) ---
             monthSelect.addEventListener('change', (e) => {
                 dibujarGrid(e.target.value); 
             });
@@ -527,10 +730,8 @@
                 triggerSave(); 
             });
             
-            // Listener para inputs (Sueldo y Concepto)
             gridBody.addEventListener('input', (e) => {
                 if(e.target.tagName === 'INPUT') {
-                    // Solo calcular y guardar si es input de sueldo o de texto (concepto)
                     if (e.target.dataset.name === 'sueldo-input' || e.target.type === 'text') {
                         calcularTotales(); 
                         triggerSave();    
@@ -538,26 +739,23 @@
                 }
             });
 
-            // Listener para CLICS (Borrar y Abrir Modal)
             gridBody.addEventListener('click', (e) => {
-                // CAMBIO 2: Lógica para el botón de borrar
                 const deleteBtn = e.target.closest('.delete-gasto-btn');
                 if (deleteBtn) {
                     const row = deleteBtn.closest('[data-row-type="gasto"]');
                     row.remove();
                     calcularTotales();
                     triggerSave();
-                    return; // Importante para no hacer las dos acciones
+                    return; 
                 }
 
-                // CAMBIO 3: Lógica para abrir el modal
                 const gastoInput = e.target.closest('[data-name="gasto-input"]');
                 if (gastoInput) {
                     openItemModal(gastoInput);
                 }
             });
 
-            // Listeners del Modal
+            // --- Listeners Modal Gasto ---
             modalCloseBtn.addEventListener('click', () => {
                 itemModal.classList.add('hidden');
                 currentModalInput = null;
@@ -565,27 +763,42 @@
 
             modalSaveBtn.addEventListener('click', () => {
                 if (!currentModalInput) return;
-
                 const text = modalTextarea.value;
                 const sum = parseAndSum(text);
-
-                // 1. Poner el total en la casilla amarilla
                 currentModalInput.value = sum.toFixed(2);
-
-                // 2. Guardar el texto en el dataset de la fila
                 const row = currentModalInput.closest('[data-row-type="gasto"]');
                 const inputs = Array.from(row.querySelectorAll('[data-name="gasto-input"]'));
                 const weekIndex = inputs.indexOf(currentModalInput);
-                
                 let detalles = JSON.parse(row.dataset.detalles || '["","","","",""]');
                 detalles[weekIndex] = text;
                 row.dataset.detalles = JSON.stringify(detalles);
-
-                // 3. Cerrar, recalcular y guardar
                 itemModal.classList.add('hidden');
                 currentModalInput = null;
                 calcularTotales();
                 triggerSave();
+            });
+
+            // --- NUEVO: Listeners Modal Caja ---
+            cajaDepositoBtn.addEventListener('click', () => openCajaModal('deposito'));
+            cajaRetiroBtn.addEventListener('click', () => openCajaModal('retiro'));
+
+            cajaModalCloseBtn.addEventListener('click', () => {
+                cajaModal.classList.add('hidden');
+M            });
+
+            cajaModalSaveBtn.addEventListener('click', handleCajaSave);
+
+            // Validar fondos en tiempo real
+            cajaModalMonto.addEventListener('input', () => {
+                const monto = parseFloat(cajaModalMonto.value) || 0;
+                if (tipoMovimientoActual === 'retiro' && monto > saldoActualGlobal) {
+                    cajaModalError.textContent = "Fondos insuficientes";
+                    cajaModalError.classList.remove('hidden');
+                    cajaModalSaveBtn.disabled = true;
+                } else {
+                    cajaModalError.classList.add('hidden');
+                    cajaModalSaveBtn.disabled = false;
+                }
             });
         }
     </script>

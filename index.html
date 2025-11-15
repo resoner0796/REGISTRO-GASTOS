@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Gastos (con Firebase)</title>
+    <!-- 1. Cargamos Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Configuración opcional de Tailwind y fuente -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <!-- 3. Estilos CSS adicionales -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .horizontal-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #grid-wrapper[data-weeks="4"] .week-5 {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen antialiased">
+
+    <!-- Contenedor principal de la App -->
+    <div id="app-container" class="container mx-auto max-w-6xl p-4 md:p-8">
+
+        <!-- VISTA: Menú Principal -->
+        <div id="main-menu" class="flex flex-col items-center justify-center min-h-[80vh]">
+            <div class="bg-white p-8 md:p-12 rounded-2xl shadow-2xl text-center">
+                <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                    Mi Control de Gastos
+                </h1>
+                <p class="text-lg text-gray-600 mb-10">
+                    Tu app de finanzas simple y al grano.
+                </p>
+                <button id="goToRegisterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg">
+                    Registrar Gastos
+                </button>
+            </div>
+        </div>
+
+        <!-- VISTA: Registro de Gastos (Oculta) -->
+        <div id="register-view" class="hidden">
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <button id="backToMenuBtn" class="text-gray-500 hover:text-gray-900 text-3xl font-bold transition-all self-start p-2 -ml-2">
+                    &larr;
+                </button>
+                <h2 class="text-3xl font-bold text-gray-900 text-center md:text-left md:flex-1 md:ml-4">
+                    Registro de Pagos
+                </h2>
+                <select id="month-select" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 self-center md:self-auto">
+                    <!-- Opciones de mes -->
+                </select>
+            </div>
+
+            <!-- Contenedor del Grid -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                
+                <div class="horizontal-scroll">
+                    <!-- Wrapper del Grid -->
+                    <div id="grid-wrapper" class="min-w-[800px] md:min-w-full" data-weeks="5">
+                        <!-- Encabezado del Grid -->
+                        <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2">
+                            <!-- Se genera con JS -->
+                        </div>
+                        <!-- Cuerpo del Grid -->
+                        <div id="grid-body" class="p-4 space-y-2">
+                            <div id="sueldo-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg" data-row-type="sueldo">
+                                <!-- Contenido generado por JS -->
+                            </div>
+                            <!-- Filas de gastos se insertan aquí -->
+                        </div>
+                        <!-- Pie de página del Grid (Totales) -->
+                        <div id="grid-footer" class="bg-gray-50 p-4 space-y-2 sticky bottom-0 z-10 border-t border-gray-200">
+                            <div id="totals-gastos-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold text-gray-700">
+                                <!-- Contenido generado por JS -->
+                            </div>
+                            <div id="totals-restante-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold">
+                                <!-- Contenido generado por JS -->
+                            </div>
+                        </div>
+                    </div> <!-- Fin grid-wrapper -->
+                </div> <!-- Fin horizontal-scroll -->
+
+                <!-- Botones de Acción -->
+                <div class="bg-white p-4 border-t border-gray-200 flex justify-between items-center">
+                    <button id="add-row-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-sm">
+                        + Agregar Gasto
+                    </button>
+                    <!-- Indicador de guardado -->
+                    <span id="save-status" class="text-sm text-gray-500 font-medium"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 4. TODO EL CÓDIGO JAVASCRIPT (AHORA COMO MÓDULO) -->
+    <script type="module">
+        // --- IMPORTS DE FIREBASE ---
+        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- VARIABLES GLOBALES DE FIREBASE ---
+        // Usamos las variables globales inyectadas por el entorno
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, auth, db, userId;
+        // setLogLevel('Debug'); // Descomentar para ver logs detallados de Firestore
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            
+            // --- INICIALIZACIÓN DE FIREBASE Y AUTH ---
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Esperar a que la autenticación se complete
+                await new Promise((resolve, reject) => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            resolve();
+                        } else if (initialAuthToken) {
+                            try {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                                // onAuthStateChanged se disparará de nuevo
+                            } catch (tokenError) {
+                                console.error("Error signing in with custom token:", tokenError);
+                                await signInAnonymously(auth); // Fallback
+                            }
+                        } else {
+                            await signInAnonymously(auth);
+                            // onAuthStateChanged se disparará de nuevo
+                        }
+                    }, (error) => {
+                        console.error("Auth error:", error);
+                        reject(error);
+                    });
+                });
+
+                // Si llegamos aquí, userId está listo.
+                initializeAppLogic();
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                // Mostrar error al usuario
+            }
+        });
+
+        // --- TODA LA LÓGICA DE LA APP ---
+        // Se ejecuta DESPUÉS de que Firebase esté listo
+        function initializeAppLogic() {
+            // --- SELECCIÓN DE ELEMENTOS DEL DOM ---
+            const mainMenu = document.getElementById('main-menu');
+            const registerView = document.getElementById('register-view');
+            const goToRegisterBtn = document.getElementById('goToRegisterBtn');
+            const backToMenuBtn = document.getElementById('backToMenuBtn');
+            const monthSelect = document.getElementById('month-select');
+            const gridWrapper = document.getElementById('grid-wrapper');
+            const gridHeader = document.getElementById('grid-header');
+            const gridBody = document.getElementById('grid-body');
+            const sueldoRow = document.getElementById('sueldo-row');
+            const addRowBtn = document.getElementById('add-row-btn');
+            const totalsGastosRow = document.getElementById('totals-gastos-row');
+            const totalsRestanteRow = document.getElementById('totals-restante-row');
+            const saveStatusEl = document.getElementById('save-status');
+
+            const AÑO_ACTUAL = new Date().getFullYear();
+            const MESES = [
+                "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+            ];
+            const MES_ABREVIADO = [
+                "ene", "feb", "mar", "abr", "may", "jun", 
+                "jul", "ago", "sep", "oct", "nov", "dic"
+            ];
+
+            let saveTimeout; // Para el auto-guardado (debounce)
+
+            // --- LÓGICA DE NAVEGACIÓN ---
+            goToRegisterBtn.addEventListener('click', () => {
+                mainMenu.classList.add('hidden');
+                registerView.classList.remove('hidden');
+            });
+
+            backToMenuBtn.addEventListener('click', () => {
+                registerView.classList.add('hidden');
+                mainMenu.classList.remove('hidden');
+            });
+
+            // --- LÓGICA PRINCIPAL DEL REGISTRO ---
+
+            function popularMeses() {
+                const mesActual = new Date().getMonth();
+                MESES.forEach((mes, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = mes;
+                    if (index === mesActual) {
+                        option.selected = true;
+                    }
+                    monthSelect.appendChild(option);
+                });
+            }
+
+            function getThursdays(mes, año) {
+                const mesNumero = parseInt(mes, 10);
+                let thursdays = [];
+                let date = new Date(año, mesNumero, 1);
+                while (date.getDay() !== 4) { date.setDate(date.getDate() + 1); }
+                while (date.getMonth() === mesNumero) {
+                    thursdays.push(new Date(date));
+                    date.setDate(date.getDate() + 7);
+                }
+                return thursdays;
+            }
+            
+            function formatDate(date) {
+                const dia = String(date.getDate()).padStart(2, '0');
+                const mes = MES_ABREVIADO[date.getMonth()];
+                return `${dia}-${mes}`;
+            }
+
+            /**
+             * Dibuja el grid (encabezado y filas) para un mes, cargando datos de Firestore.
+             */
+            async function dibujarGrid(mesIndex) {
+                saveStatusEl.textContent = "Cargando mes...";
+                const mesNum = parseInt(mesIndex, 10);
+                const thursdays = getThursdays(mesNum, AÑO_ACTUAL);
+                const numSemanas = thursdays.length;
+                
+                gridWrapper.dataset.weeks = numSemanas;
+
+                // --- OBTENER DATOS DE FIRESTORE ---
+                const docId = `${AÑO_ACTUAL}-${mesNum}`; // ej: "2025-10"
+                const docPath = `artifacts/${appId}/users/${userId}/registros/${docId}`;
+                const docRef = doc(db, docPath);
+                let docData = null;
+                try {
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        docData = docSnap.data();
+                    }
+                } catch (e) {
+                    console.error("Error cargando datos: ", e);
+                    saveStatusEl.textContent = "Error al cargar ❌";
+                }
+
+                // --- 1. Dibujar Encabezado ---
+                let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
+                for (let i = 0; i < 5; i++) {
+                    const date = thursdays[i];
+                    const label = date ? formatDate(date) : "---";
+                    const weekClass = (i === 4) ? 'week-5' : '';
+                    headerHTML += `<div class="text-center p-2 ${weekClass}">${label}</div>`;
+                }
+                gridHeader.innerHTML = headerHTML;
+
+                // --- 2. Dibujar Cuerpo ---
+                const gastosAnteriores = gridBody.querySelectorAll('[data-row-type="gasto"]');
+                gastosAnteriores.forEach(gasto => gasto.remove());
+
+                // Actualizar fila de Sueldo (con datos)
+                sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
+                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
+                for (let i = 0; i < 5; i++) {
+                    const sueldoValor = docData?.sueldo?.[i] || ""; // Cargar valor
+                    const weekClass = (i === 4) ? 'week-5' : '';
+                    sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold ${weekClass}">`;
+                }
+                sueldoRow.innerHTML = sueldoHTML;
+                
+                // Dibujar filas de Gasto (con datos)
+                if (docData && docData.gastos && docData.gastos.length > 0) {
+                    docData.gastos.forEach(gasto => {
+                        agregarFilaDeGasto(gasto.concepto, gasto.montos);
+                    });
+                } else {
+                    agregarFilaDeGasto(); // Añadir una fila vacía si no hay datos
+                }
+
+                // --- 3. Dibujar Pie (Totales) ---
+                let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
+                let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
+                for (let i = 0; i < 5; i++) {
+                    const weekClass = (i === 4) ? 'week-5' : '';
+                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded ${weekClass}">0.00</div>`;
+                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold ${weekClass}">0.00</div>`;
+                }
+                totalsGastosRow.innerHTML = totalGastoHTML;
+                totalsRestanteRow.innerHTML = totalRestanteHTML;
+                
+                calcularTotales();
+                saveStatusEl.textContent = "Listo ✔";
+            }
+
+            /**
+             * Añade una nueva fila de gasto (opcionalmente con datos).
+             */
+            function agregarFilaDeGasto(concepto = "", montos = []) {
+                const gastoRow = document.createElement('div');
+                gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
+                gastoRow.dataset.rowType = "gasto";
+
+                let gastoHTML = `<input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 sticky left-0 z-5">`;
+                for (let i = 0; i < 5; i++) {
+                    const montoValor = montos[i] || ""; // Cargar valor
+                    const weekClass = (i === 4) ? 'week-5' : '';
+                    gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" class="bg-yellow-100 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono ${weekClass}">`;
+                }
+                gastoRow.innerHTML = gastoHTML;
+                gridBody.appendChild(gastoRow);
+            }
+
+            /**
+             * Calcula y muestra todos los totales (lógica sin cambios).
+             */
+            function calcularTotales() {
+                const numSemanas = 5; 
+                const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
+                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]');
+
+                let totalesSueldo = new Array(numSemanas).fill(0);
+                let totalesGasto = new Array(numSemanas).fill(0);
+                let totalesRestante = new Array(numSemanas).fill(0);
+
+                sueldoInputs.forEach((input, index) => {
+                    totalesSueldo[index] = parseFloat(input.value) || 0;
+                });
+                filasGastos.forEach(fila => {
+                    const gastoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
+                    gastoInputs.forEach((input, index) => {
+                        totalesGasto[index] += parseFloat(input.value) || 0;
+                    });
+                });
+                for (let i = 0; i < numSemanas; i++) {
+                    totalesRestante[i] = totalesSueldo[i] - totalesGasto[i];
+                }
+
+                const celdasTotalGasto = totalsGastosRow.querySelectorAll('div:not(:first-child)');
+                const celdasTotalRestante = totalsRestanteRow.querySelectorAll('div:not(:first-child)');
+
+                celdasTotalGasto.forEach((celda, index) => {
+                    celda.textContent = totalesGasto[index].toFixed(2);
+                });
+                celdasTotalRestante.forEach((celda, index) => {
+                    celda.textContent = totalesRestante[index].toFixed(2);
+                    celda.classList.toggle('text-green-600', totalesRestante[index] >= 0);
+                    celda.classList.toggle('text-red-600', totalesRestante[index] < 0);
+                });
+            }
+
+            /**
+             * Dispara el auto-guardado con un retraso (debounce).
+             */
+            function triggerSave() {
+                saveStatusEl.textContent = "Sincronizando...";
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(guardarDatos, 1500); // 1.5 segundos después del último input
+            }
+
+            /**
+             * Lee todos los datos del DOM y los guarda en Firestore.
+             */
+            async function guardarDatos() {
+                saveStatusEl.textContent = "Guardando...";
+                const mesIndex = monthSelect.value;
+                const docId = `${AÑO_ACTUAL}-${mesIndex}`;
+                const docPath = `artifacts/${appId}/users/${userId}/registros/${docId}`;
+                const docRef = doc(db, docPath);
+
+                // 1. Obtener datos de Sueldo
+                const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
+                const sueldoData = Array.from(sueldoInputs).map(input => input.value);
+
+                // 2. Obtener datos de Gastos
+                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]');
+                const gastosData = [];
+                filasGastos.forEach(fila => {
+                    const conceptoInput = fila.querySelector('input[type="text"]');
+                    const montoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
+                    const montos = Array.from(montoInputs).map(input => input.value);
+                    
+                    // Solo guardar si hay concepto o algún monto
+                    if (conceptoInput.value || montos.some(m => m)) {
+                        gastosData.push({
+                            concepto: conceptoInput.value,
+                            montos: montos
+                        });
+                    }
+                });
+
+                const dataPayload = {
+                    sueldo: sueldoData,
+                    gastos: gastosData
+                };
+
+                try {
+                    await setDoc(docRef, dataPayload); // setDoc sobrescribe (o crea) el doc
+                    saveStatusEl.textContent = "Guardado ✔";
+                } catch (e) {
+                    console.error("Error guardando datos: ", e);
+                    saveStatusEl.textContent = "Error al guardar ❌";
+                }
+            }
+
+            // --- INICIALIZACIÓN DE LA APP ---
+            popularMeses();
+            dibujarGrid(monthSelect.value); // Llama inicial
+
+            // --- EVENT LISTENERS ---
+            monthSelect.addEventListener('change', (e) => {
+                dibujarGrid(e.target.value); 
+            });
+            
+            addRowBtn.addEventListener('click', () => {
+                agregarFilaDeGasto();
+                triggerSave(); // Guardar al añadir fila nueva
+            });
+            
+            gridBody.addEventListener('input', (e) => {
+                if(e.target.tagName === 'INPUT') {
+                    calcularTotales(); // Calcular en tiempo real
+                    triggerSave();    // Disparar auto-guardado
+                }
+            });
+        }
+    </script>
+</body>
+</html>

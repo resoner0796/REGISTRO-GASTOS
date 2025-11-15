@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Banner Mes)</title>
+    <title>Control de Gastos (Resumen Anual)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -62,6 +62,18 @@
         #caja-log .log-monto.retiro {
             color: #dc2626; /* red-600 */
         }
+
+        /* Estilos para Resumen Anual */
+        #summary-list .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        #summary-list .summary-item:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen antialiased">
@@ -71,15 +83,19 @@
 
         <!-- VISTA: Menú Principal -->
         <div id="main-menu" class="flex flex-col items-center justify-center min-h-[80vh]">
-            <div class="bg-white p-8 md:p-12 rounded-2xl shadow-2xl text-center">
+            <div class="bg-white p-8 md:p-12 rounded-2xl shadow-2xl text-center w-full max-w-md">
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                     Mi Control de Gastos
                 </h1>
                 <p class="text-lg text-gray-600 mb-10">
                     Tu app de finanzas simple y al grano.
                 </p>
-                <button id="goToRegisterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg">
+                <button id="goToRegisterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
                     Registrar Gastos
+                </button>
+                <!-- ****** NUEVO: BOTÓN RESUMEN ANUAL ****** -->
+                <button id="goToSummaryBtn" class="mt-4 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
+                    Resumen Anual
                 </button>
             </div>
         </div>
@@ -96,8 +112,8 @@
                 </h2>
             </div>
 
-            <!-- ****** CAMBIO: SELECTOR DE MES COMO BANNER ****** -->
-            <select id="month-select" class="w-full bg-orange-700 text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer">
+            <!-- ****** CAMBIO: SELECTOR DE MES (LOS COLORES SE APLICAN CON JS) ****** -->
+            <select id="month-select" class="w-full text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none cursor-pointer transition-colors duration-300">
                 <!-- Opciones de mes -->
             </select>
 
@@ -135,7 +151,6 @@
                     <button id="add-row-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-base">
                         + Agregar Gasto
                     </button>
-                    <!-- Indicador de guardado -->
                     <span id="save-status" class="text-sm text-gray-500 font-medium">Listo ✔</span>
                 </div>
             </div>
@@ -162,15 +177,38 @@
                 <div class="bg-gray-50 p-6 border-t border-gray-200">
                     <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos</h4>
                     <ul id="caja-log" class="space-y-2 max-h-48 overflow-y-auto">
-                        <!-- Movimientos se cargan aquí -->
                         <li class="text-center text-gray-500 py-4">Cargando movimientos...</li>
                     </ul>
                 </div>
             </div>
-            <!-- ****** FIN DE PANEL ****** -->
-
         </div>
-    </div>
+
+        <!-- ****** NUEVO: VISTA RESUMEN ANUAL (Oculta) ****** -->
+        <div id="summary-view" class="hidden">
+            <!-- Header -->
+            <div class="flex items-center mb-4">
+                <button id="backToMenuFromSummaryBtn" class="text-gray-500 hover:text-gray-900 text-3xl font-bold transition-all self-start p-2 -ml-2">
+                    &larr;
+                </button>
+                <h2 class="text-3xl font-bold text-gray-900 text-center flex-1 ml-4">
+                    Resumen Anual
+                </h2>
+            </div>
+            <!-- Cuerpo del Resumen -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <!-- Total General -->
+                <div class="p-6 text-center bg-gray-800 text-white rounded-t-2xl">
+                    <p class="text-sm font-medium text-gray-300 uppercase">Ganancia Neta (Año)</p>
+                    <p id="summary-total-neto" class="text-4xl font-bold">$0.00</p>
+                </div>
+                <!-- Lista de Meses -->
+                <ul id="summary-list" class="p-4 md:p-6">
+                    <li class="text-center text-gray-500 py-8">Cargando resumen...</li>
+                </ul>
+            </div>
+        </div>
+
+    </div> <!-- Fin App Container -->
 
     <!-- MODAL 1: GASTOS DETALLADOS -->
     <div id="item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -225,12 +263,13 @@
 
     <!-- 4. TODO EL CÓDIGO JAVASCRIPT (AHORA COMO MÓDULO) -->
     <script type="module">
-        // --- IMPORTS DE FIREBASE (NUEVOS AÑADIDOS) ---
+        // --- IMPORTS DE FIREBASE (AÑADIDOS GETDOCS Y WHERE) ---
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, doc, getDoc, setDoc, runTransaction, 
-            collection, onSnapshot, query, orderBy, limit, serverTimestamp, addDoc 
+            collection, onSnapshot, query, orderBy, limit, serverTimestamp, addDoc,
+            getDocs, where
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
@@ -245,10 +284,9 @@
         
         let app, auth, db, userId;
         
-        // --- Refs de Caja de Ahorro ---
-        let cajaDocRef, cajaLogColRef;
+        let cajaDocRef, cajaLogColRef, registrosColRef;
         let saldoActualGlobal = 0;
-        let tipoMovimientoActual = 'deposito'; // 'deposito' o 'retiro'
+        let tipoMovimientoActual = 'deposito'; 
         
         // setLogLevel('Debug'); 
 
@@ -262,8 +300,10 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             userId = user.uid;
+                            // Definir rutas principales
                             cajaDocRef = doc(db, 'usuarios', userId, 'ahorro', 'caja');
                             cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
+                            registrosColRef = collection(db, 'usuarios', userId, 'registros');
                             resolve();
                         } else {
                             try {
@@ -289,11 +329,16 @@
 
         // --- TODA LA LÓGICA DE LA APP ---
         function initializeAppLogic() {
-            // --- SELECCIÓN DE ELEMENTOS DEL DOM (GRID) ---
+            // --- SELECCIÓN DE ELEMENTOS DEL DOM (GENERAL) ---
             const mainMenu = document.getElementById('main-menu');
             const registerView = document.getElementById('register-view');
+            const summaryView = document.getElementById('summary-view'); // Nuevo
             const goToRegisterBtn = document.getElementById('goToRegisterBtn');
+            const goToSummaryBtn = document.getElementById('goToSummaryBtn'); // Nuevo
             const backToMenuBtn = document.getElementById('backToMenuBtn');
+            const backToMenuFromSummaryBtn = document.getElementById('backToMenuFromSummaryBtn'); // Nuevo
+            
+            // --- DOM (GRID) ---
             const monthSelect = document.getElementById('month-select');
             const gridWrapper = document.getElementById('grid-wrapper');
             const gridHeader = document.getElementById('grid-header');
@@ -304,7 +349,7 @@
             const totalsRestanteRow = document.getElementById('totals-restante-row');
             const saveStatusEl = document.getElementById('save-status');
 
-            // --- Modal Gasto DOM ---
+            // --- DOM (Modal Gasto) ---
             const itemModal = document.getElementById('item-modal');
             const modalTitle = document.getElementById('modal-title');
             const modalSubtitle = document.getElementById('modal-subtitle');
@@ -313,13 +358,13 @@
             const modalSaveBtn = document.getElementById('modal-save-btn');
             let currentModalInput = null; 
 
-            // --- Caja de Ahorro DOM ---
+            // --- DOM (Caja de Ahorro) ---
             const cajaSaldoEl = document.getElementById('caja-saldo');
             const cajaLogEl = document.getElementById('caja-log');
             const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
             const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
 
-            // --- Modal Caja DOM ---
+            // --- DOM (Modal Caja) ---
             const cajaModal = document.getElementById('caja-modal');
             const cajaModalTitle = document.getElementById('caja-modal-title');
             const cajaModalMonto = document.getElementById('caja-modal-monto');
@@ -328,6 +373,11 @@
             const cajaModalCloseBtn = document.getElementById('caja-modal-close-btn');
             const cajaModalSaveBtn = document.getElementById('caja-modal-save-btn');
 
+            // --- DOM (Resumen Anual) ---
+            const summaryList = document.getElementById('summary-list');
+            const summaryTotalNeto = document.getElementById('summary-total-neto');
+
+            // --- CONSTANTES ---
             const AÑO_ACTUAL = new Date().getFullYear();
             const MESES = [
                 "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -337,17 +387,47 @@
                 "ene", "feb", "mar", "abr", "may", "jun", 
                 "jul", "ago", "sep", "oct", "nov", "dic"
             ];
+            // --- NUEVO: COLORES DE MES ---
+            const MES_COLORES = [
+                'bg-blue-600',    // Enero (Invierno)
+                'bg-red-600',     // Febrero (San Valentín)
+                'bg-yellow-500',  // Marzo (Primavera)
+                'bg-green-500',   // Abril (Pascua)
+                'bg-pink-500',    // Mayo (Madres)
+                'bg-cyan-500',    // Junio (Verano)
+                'bg-orange-600',  // Julio (Verano)
+                'bg-amber-600',   // Agosto (Verano)
+                'bg-green-700',   // Septiembre (Patrio)
+                'bg-orange-800',  // Octubre (Halloween)
+                'bg-purple-700',  // Noviembre (Día de Muertos)
+                'bg-red-700'      // Diciembre (Navidad)
+            ];
 
             let saveTimeout; 
 
             // --- LÓGICA DE NAVEGACIÓN ---
             goToRegisterBtn.addEventListener('click', () => {
                 mainMenu.classList.add('hidden');
+                summaryView.classList.add('hidden');
                 registerView.classList.remove('hidden');
+            });
+            
+            goToSummaryBtn.addEventListener('click', () => {
+                mainMenu.classList.add('hidden');
+                registerView.classList.add('hidden');
+                summaryView.classList.remove('hidden');
+                cargarResumenAnual(); // Cargar datos al entrar
             });
 
             backToMenuBtn.addEventListener('click', () => {
                 registerView.classList.add('hidden');
+                summaryView.classList.add('hidden');
+                mainMenu.classList.remove('hidden');
+            });
+
+            backToMenuFromSummaryBtn.addEventListener('click', () => {
+                registerView.classList.add('hidden');
+                summaryView.classList.add('hidden');
                 mainMenu.classList.remove('hidden');
             });
 
@@ -362,10 +442,18 @@
                     if (index === mesActual) {
                         option.selected = true;
                     }
-                    // *** CAMBIO: Resetear estilos de las opciones ***
                     option.className = "bg-white text-gray-900 text-base font-normal normal-case tracking-normal";
                     monthSelect.appendChild(option);
                 });
+            }
+            
+            // --- NUEVO: Función para cambiar color del banner ---
+            function setBannerColor(mesIndex) {
+                const colorClase = MES_COLORES[mesIndex];
+                // Quitar todos los colores anteriores
+                MES_COLORES.forEach(c => monthSelect.classList.remove(c));
+                // Añadir el nuevo
+                monthSelect.classList.add(colorClase);
             }
 
             function getThursdays(mes, año) {
@@ -389,14 +477,19 @@
             async function dibujarGrid(mesIndex) {
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
+                
+                // --- NUEVO: Aplicar color de banner ---
+                setBannerColor(mesNum);
+
                 const thursdays = getThursdays(mesNum, AÑO_ACTUAL);
                 const numSemanas = thursdays.length;
                 
                 gridWrapper.dataset.weeks = numSemanas;
 
-                const docId = `${AÑO_ACTUAL}-${mesNum}`; 
-                const docPath = `usuarios/${userId}/registros/${docId}`;
-                const docRef = doc(db, docPath);
+                // --- IMPORTANTE: CORRECCIÓN DE DOC ID ---
+                const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`; // Ej: "2025-04" para Mayo
+                const docRef = doc(registrosColRef, docId); // Usar la colección base
+                
                 let docData = null;
                 try {
                     const docSnap = await getDoc(docRef);
@@ -496,7 +589,7 @@
                         totalesGasto[index] += parseFloat(input.value) || 0;
                     });
                 });
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < numSemanas; i++) {
                     totalesRestante[i] = totalesSueldo[i] - totalesGasto[i];
                 }
 
@@ -522,9 +615,10 @@
             async function guardarDatos() {
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
-                const docId = `${AÑO_ACTUAL}-${mesIndex}`;
-                const docPath = `usuarios/${userId}/registros/${docId}`;
-                const docRef = doc(db, docPath);
+                
+                // --- IMPORTANTE: CORRECCIÓN DE DOC ID ---
+                const docId = `${AÑO_ACTUAL}-${String(mesIndex).padStart(2, '0')}`;
+                const docRef = doc(registrosColRef, docId);
 
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
                 const sueldoData = Array.from(sueldoInputs).map(input => input.value);
@@ -578,17 +672,13 @@
                 currentModalInput = input;
                 const row = input.closest('[data-row-type="gasto"]');
                 const concepto = row.querySelector('input[type="text"]').value || "Gasto";
-                
                 const inputs = Array.from(row.querySelectorAll('[data-name="gasto-input"]'));
                 const weekIndex = inputs.indexOf(input);
                 const weekLabel = document.querySelectorAll('#grid-header div')[weekIndex + 1].textContent;
-
                 modalTitle.textContent = `Detalles: ${concepto}`;
                 modalSubtitle.textContent = `Semana de ${weekLabel}`;
-                
                 const detalles = JSON.parse(row.dataset.detalles || '["","","","",""]');
                 modalTextarea.value = detalles[weekIndex] || "";
-                
                 itemModal.classList.remove('hidden');
                 modalTextarea.focus();
             }
@@ -596,7 +686,6 @@
             // --- LÓGICA DE CAJA DE AHORRO ---
 
             function iniciarListenersCaja() {
-                // 1. Listener para el Saldo
                 onSnapshot(cajaDocRef, (doc) => {
                     if (doc.exists()) {
                         saldoActualGlobal = doc.data().saldoActual || 0;
@@ -608,10 +697,9 @@
                     cajaSaldoEl.textContent = `$${saldoActualGlobal.toFixed(2)}`;
                 });
 
-                // 2. Listener para los Movimientos (Log)
                 const logQuery = query(cajaLogColRef, orderBy("fecha", "desc"), limit(10));
                 onSnapshot(logQuery, (snapshot) => {
-                    cajaLogEl.innerHTML = ""; // Limpiar
+                    cajaLogEl.innerHTML = ""; 
                     if (snapshot.empty) {
                         cajaLogEl.innerHTML = '<li class="text-center text-gray-500">No hay movimientos.</li>';
                         return;
@@ -621,7 +709,6 @@
                         const monto = data.monto.toFixed(2);
                         const tipo = data.tipo;
                         const fecha = data.fecha ? data.fecha.toDate().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '...';
-                        
                         const li = document.createElement('li');
                         li.innerHTML = `
                             <div>
@@ -644,11 +731,10 @@
                 cajaModalConcepto.value = "";
                 cajaModalError.classList.add('hidden');
                 cajaModalSaveBtn.disabled = false;
-
                 if (tipo === 'deposito') {
                     cajaModalTitle.textContent = "Depositar en Ahorros";
                     cajaModalSaveBtn.className = "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
-                } else { // retiro
+                } else {
                     cajaModalTitle.textContent = "Retirar de Ahorros";
                     cajaModalSaveBtn.className = "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
                 }
@@ -658,34 +744,27 @@
             async function handleCajaSave() {
                 const monto = parseFloat(cajaModalMonto.value) || 0;
                 let concepto = cajaModalConcepto.value || (tipoMovimientoActual === 'deposito' ? 'Depósito' : 'Retiro');
-                
                 if (monto <= 0) {
                     cajaModalError.textContent = "El monto debe ser positivo";
                     cajaModalError.classList.remove('hidden');
                     return;
                 }
-
                 if (tipoMovimientoActual === 'retiro' && monto > saldoActualGlobal) {
                     cajaModalError.textContent = "Fondos insuficientes";
                     cajaModalError.classList.remove('hidden');
                     return;
                 }
-
                 cajaModalSaveBtn.disabled = true;
                 cajaModalSaveBtn.textContent = "Guardando...";
-
                 try {
                     await runTransaction(db, async (transaction) => {
                         const cajaDoc = await transaction.get(cajaDocRef);
                         const saldoPrevio = cajaDoc.data().saldoActual || 0;
-                        
                         let nuevoSaldo;
                         if (tipoMovimientoActual === 'deposito') {
                             nuevoSaldo = saldoPrevio + monto;
                         } else {
-                            if (saldoPrevio < monto) {
-                                throw new Error("Fondos insuficientes");
-                            }
+                            if (saldoPrevio < monto) throw new Error("Fondos insuficientes");
                             nuevoSaldo = saldoPrevio - monto;
                         }
                         transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
@@ -707,10 +786,94 @@
                 cajaModalSaveBtn.textContent = "Confirmar";
             }
 
+            // --- ****** NUEVO: LÓGICA RESUMEN ANUAL ****** ---
+
+            async function cargarResumenAnual() {
+                summaryList.innerHTML = '<li class="text-center text-gray-500 py-8">Calculando resumen...</li>';
+                
+                // Query para traer todos los docs del año
+                const q = query(registrosColRef, 
+                    where(doc(registrosColRef).id, '>=', `${AÑO_ACTUAL}-00`), 
+                    where(doc(registrosColRef).id, '<=', `${AÑO_ACTUAL}-11`)
+                );
+                
+                let granTotalNeto = 0;
+                // Inicializar un array para los 12 meses
+                let mesesData = new Array(12).fill(null);
+
+                try {
+                    const querySnapshot = await getDocs(q);
+
+                    querySnapshot.forEach(doc => {
+                        const docId = doc.id; // Ej: "2025-05"
+                        const mesIndex = parseInt(docId.split('-')[1], 10); // Ej: 5
+                        const data = doc.data();
+
+                        // Calcular totales del mes
+                        const totalSueldoMes = data.sueldo.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+                        const totalGastoMes = data.gastos.reduce((acc, gasto) => {
+                            return acc + gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
+                        }, 0);
+                        
+                        const totalNetoMes = totalSueldoMes - totalGastoMes;
+                        granTotalNeto += totalNetoMes;
+
+                        // Guardar en el array en la posición correcta
+                        mesesData[mesIndex] = {
+                            totalSueldoMes,
+                            totalGastoMes,
+                            totalNetoMes
+                        };
+                    });
+
+                    // Renderizar los datos
+                    summaryList.innerHTML = ""; // Limpiar
+                    MESES.forEach((mesNombre, index) => {
+                        const data = mesesData[index];
+                        const li = document.createElement('li');
+li.className = "summary-item";
+
+                        if (data) {
+                            const netoColor = data.totalNetoMes >= 0 ? 'text-green-600' : 'text-red-600';
+                            li.innerHTML = `
+                                <div>
+                                    <p class="text-lg font-bold text-gray-900">${mesNombre}</p>
+                                    <p class="text-sm text-gray-500">Sueldo: $${data.totalSueldoMes.toFixed(2)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-bold font-mono ${netoColor}">$${data.totalNetoMes.toFixed(2)}</p>
+                                    <p class="text-sm text-gray-500">Gasto: $${data.totalGastoMes.toFixed(2)}</p>
+                                </div>
+                            `;
+                        } else {
+                            // Mes sin datos
+                            li.innerHTML = `
+                                <div>
+                                    <p class="text-lg font-bold text-gray-400">${mesNombre}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-mono text-gray-400">Sin datos</p>
+                                </div>
+                            `;
+                        }
+                        summaryList.appendChild(li);
+                    });
+
+                    // Actualizar Gran Total
+                    summaryTotalNeto.textContent = `$${granTotalNeto.toFixed(2)}`;
+                    summaryTotalNeto.classList.toggle('text-green-400', granTotalNeto >= 0);
+                    summaryTotalNeto.classList.toggle('text-red-400', granTotalNeto < 0);
+
+                } catch (e) {
+                    console.error("Error cargando resumen anual: ", e);
+                    summaryList.innerHTML = '<li class="text-center text-red-500 py-8">Error al cargar resumen.</li>';
+                }
+            }
+
             // --- INICIALIZACIÓN DE LA APP ---
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
-            iniciarListenersCaja(); // Iniciar listeners de la caja
+            iniciarListenersCaja(); 
 
             // --- EVENT LISTENERS (GRID) ---
             monthSelect.addEventListener('change', (e) => {

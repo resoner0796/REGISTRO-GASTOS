@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Gastos (GitHub Pages)</title>
+    <title>Control de Gastos (GitHub Pages v2)</title>
     <!-- 1. Cargamos Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 2. Configuración opcional de Tailwind y fuente -->
@@ -126,8 +126,7 @@
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
         
-        // *** CAMBIO 1: Configuración "Hardcoded" ---
-        // Esta es la configuración que me pasaste, ahora está en el código.
+        // Configuración "Hardcoded"
         const firebaseConfig = {
             apiKey: "AIzaSyDRq70PInWyj7pjYPGGqMQWaVe_tbrwebI",
             authDomain: "mi-control-financiero-9099a.firebaseapp.com",
@@ -138,26 +137,23 @@
         };
         
         let app, auth, db, userId;
-        // setLogLevel('Debug'); // Descomentar para ver logs detallados de Firestore
+        // setLogLevel('Debug'); 
 
         document.addEventListener('DOMContentLoaded', async () => {
             
             // --- INICIALIZACIÓN DE FIREBASE Y AUTH ---
             try {
-                app = initializeApp(firebaseConfig); // Usa la config de arriba
+                app = initializeApp(firebaseConfig); 
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // *** CAMBIO 2: Lógica de Autenticación Simplificada ***
-                // Esperar a que la autenticación se complete
+                // Lógica de Autenticación Simplificada
                 await new Promise((resolve, reject) => {
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
-                            // El usuario ya está logueado (anónimamente)
                             userId = user.uid;
                             resolve();
                         } else {
-                            // El usuario no está logueado, loguear anónimamente
                             try {
                                 await signInAnonymously(auth);
                                 // onAuthStateChanged se disparará de nuevo
@@ -172,7 +168,6 @@
                     });
                 });
 
-                // Si llegamos aquí, userId está listo.
                 // ¡AHORA SÍ INICIAMOS LA LÓGICA DE LOS BOTONES!
                 initializeAppLogic();
 
@@ -183,7 +178,6 @@
         });
 
         // --- TODA LA LÓGICA DE LA APP ---
-        // Se ejecuta DESPUÉS de que Firebase esté listo
         function initializeAppLogic() {
             // --- SELECCIÓN DE ELEMENTOS DEL DOM ---
             const mainMenu = document.getElementById('main-menu');
@@ -210,10 +204,9 @@
                 "jul", "ago", "sep", "oct", "nov", "dic"
             ];
 
-            let saveTimeout; // Para el auto-guardado (debounce)
+            let saveTimeout; 
 
             // --- LÓGICA DE NAVEGACIÓN ---
-            // Esta función ahora SÍ se está "escuchando"
             goToRegisterBtn.addEventListener('click', () => {
                 mainMenu.classList.add('hidden');
                 registerView.classList.remove('hidden');
@@ -267,7 +260,6 @@
 
                 // --- OBTENER DATOS DE FIRESTORE ---
                 const docId = `${AÑO_ACTUAL}-${mesNum}`; // ej: "2025-10"
-                // *** CAMBIO 3: Nueva ruta de base de datos ***
                 const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
                 let docData = null;
@@ -297,7 +289,10 @@
 
                 // Actualizar fila de Sueldo (con datos)
                 sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
-                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sue</div>';
+                
+                // *** CAMBIO 1: "Sue" -> "Sueldo" ***
+                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
+                
                 for (let i = 0; i < 5; i++) {
                     const sueldoValor = docData?.sueldo?.[i] || ""; // Cargar valor
                     const weekClass = (i === 4) ? 'week-5' : '';
@@ -319,8 +314,8 @@
                 let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
                 for (let i = 0; i < 5; i++) {
                     const weekClass = (i === 4) ? 'week-5' : '';
-                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded ${weekClass}">0.00</div>`;
-                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold ${weekClass}">0.00</div>`;
+                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded ${weekClass}">$0.00</div>`;
+                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold ${weekClass}">$0.00</div>`;
                 }
                 totalsGastosRow.innerHTML = totalGastoHTML;
                 totalsRestanteRow.innerHTML = totalRestanteHTML;
@@ -370,10 +365,12 @@
                 const celdasTotalRestante = totalsRestanteRow.querySelectorAll('div:not(:first-child)');
 
                 celdasTotalGasto.forEach((celda, index) => {
-                    celda.textContent = totalesGasto[index].toFixed(2);
+                    // *** CAMBIO 2: Añadir $ ***
+                    celda.textContent = `$${totalesGasto[index].toFixed(2)}`;
                 });
                 celdasTotalRestante.forEach((celda, index) => {
-                    celda.textContent = totalesRestante[index].toFixed(2);
+                    // *** CAMBIO 2: Añadir $ ***
+                    celda.textContent = `$${totalesRestante[index].toFixed(2)}`;
                     celda.classList.toggle('text-green-600', totalesRestante[index] >= 0);
                     celda.classList.toggle('text-red-600', totalesRestante[index] < 0);
                 });
@@ -389,7 +386,6 @@
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
                 const docId = `${AÑO_ACTUAL}-${mesIndex}`;
-                // *** CAMBIO 3: Nueva ruta de base de datos ***
                 const docPath = `usuarios/${userId}/registros/${docId}`;
                 const docRef = doc(db, docPath);
 
@@ -433,8 +429,7 @@
 
             // --- EVENT LISTENERS ---
             monthSelect.addEventListener('change', (e) => {
-                dibujarGrid(e.target.value); 
-            });
+                dibujarGrid(e.target.value); F            });
             
             addRowBtn.addEventListener('click', () => {
                 agregarFilaDeGasto();

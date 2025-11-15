@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Caja de Ahorro)</title>
+    <title>Control de Gastos (Banner Mes)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -86,21 +86,23 @@
 
         <!-- VISTA: Registro de Gastos (Oculta) -->
         <div id="register-view" class="hidden">
-            <!-- Header -->
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <!-- Header: Botón de volver y Título -->
+            <div class="flex items-center mb-4">
                 <button id="backToMenuBtn" class="text-gray-500 hover:text-gray-900 text-3xl font-bold transition-all self-start p-2 -ml-2">
                     &larr;
                 </button>
-                <h2 class="text-3xl font-bold text-gray-900 text-center md:text-left md:flex-1 md:ml-4">
+                <h2 class="text-3xl font-bold text-gray-900 text-center flex-1 ml-4">
                     Registro de Pagos
                 </h2>
-                <select id="month-select" class="bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 self-center md:self-auto text-base">
-                    <!-- Opciones de mes -->
-                </select>
             </div>
 
-            <!-- Contenedor del Grid -->
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <!-- ****** CAMBIO: SELECTOR DE MES COMO BANNER ****** -->
+            <select id="month-select" class="w-full bg-orange-700 text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer">
+                <!-- Opciones de mes -->
+            </select>
+
+            <!-- Contenedor del Grid (ahora con rounded-b-2xl) -->
+            <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
                 
                 <div class="horizontal-scroll">
                     <!-- Wrapper del Grid -->
@@ -138,7 +140,7 @@
                 </div>
             </div>
 
-            <!-- ****** NUEVO: PANEL DE CAJA DE AHORRO ****** -->
+            <!-- Panel de Caja de Ahorro -->
             <div id="caja-ahorro-view" class="mt-8 bg-white rounded-2xl shadow-xl overflow-hidden">
                 <div class="p-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">Caja de Ahorro</h3>
@@ -191,7 +193,7 @@
         </div>
     </div>
 
-    <!-- ****** NUEVO: MODAL 2: CAJA DE AHORRO ****** -->
+    <!-- MODAL 2: CAJA DE AHORRO -->
     <div id="caja-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
             <div class="p-6 border-b border-gray-200">
@@ -243,7 +245,7 @@
         
         let app, auth, db, userId;
         
-        // --- NUEVO: Refs de Caja de Ahorro ---
+        // --- Refs de Caja de Ahorro ---
         let cajaDocRef, cajaLogColRef;
         let saldoActualGlobal = 0;
         let tipoMovimientoActual = 'deposito'; // 'deposito' o 'retiro'
@@ -260,7 +262,6 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             userId = user.uid;
-                            // --- NUEVO: Definir refs aquí ---
                             cajaDocRef = doc(db, 'usuarios', userId, 'ahorro', 'caja');
                             cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
                             resolve();
@@ -312,13 +313,13 @@
             const modalSaveBtn = document.getElementById('modal-save-btn');
             let currentModalInput = null; 
 
-            // --- NUEVO: Caja de Ahorro DOM ---
+            // --- Caja de Ahorro DOM ---
             const cajaSaldoEl = document.getElementById('caja-saldo');
             const cajaLogEl = document.getElementById('caja-log');
             const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
             const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
 
-            // --- NUEVO: Modal Caja DOM ---
+            // --- Modal Caja DOM ---
             const cajaModal = document.getElementById('caja-modal');
             const cajaModalTitle = document.getElementById('caja-modal-title');
             const cajaModalMonto = document.getElementById('caja-modal-monto');
@@ -351,7 +352,6 @@
             });
 
             // --- LÓGICA PRINCIPAL DEL REGISTRO (GRID) ---
-            // (Funciones getThursdays, formatDate, popularMeses... sin cambios)
 
             function popularMeses() {
                 const mesActual = new Date().getMonth();
@@ -362,6 +362,8 @@
                     if (index === mesActual) {
                         option.selected = true;
                     }
+                    // *** CAMBIO: Resetear estilos de las opciones ***
+                    option.className = "bg-white text-gray-900 text-base font-normal normal-case tracking-normal";
                     monthSelect.appendChild(option);
                 });
             }
@@ -494,7 +496,7 @@
                         totalesGasto[index] += parseFloat(input.value) || 0;
                     });
                 });
-                for (let i = 0; i < numSemanas; i++) {
+                for (let i = 0; i < 5; i++) {
                     totalesRestante[i] = totalesSueldo[i] - totalesGasto[i];
                 }
 
@@ -591,7 +593,7 @@
                 modalTextarea.focus();
             }
 
-            // --- NUEVO: LÓGICA DE CAJA DE AHORRO ---
+            // --- LÓGICA DE CAJA DE AHORRO ---
 
             function iniciarListenersCaja() {
                 // 1. Listener para el Saldo
@@ -599,7 +601,6 @@
                     if (doc.exists()) {
                         saldoActualGlobal = doc.data().saldoActual || 0;
                     } else {
-                        // Si no existe, lo creamos
                         setDoc(cajaDocRef, { saldoActual: 0 })
                             .catch(e => console.error("Error inicializando caja:", e));
                         saldoActualGlobal = 0;
@@ -674,7 +675,6 @@
                 cajaModalSaveBtn.textContent = "Guardando...";
 
                 try {
-                    // Usamos una transacción para asegurar que el saldo y el log estén sincronizados
                     await runTransaction(db, async (transaction) => {
                         const cajaDoc = await transaction.get(cajaDocRef);
                         const saldoPrevio = cajaDoc.data().saldoActual || 0;
@@ -688,29 +688,21 @@
                             }
                             nuevoSaldo = saldoPrevio - monto;
                         }
-
-                        // 1. Actualizar el saldo
                         transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
-
-                        // 2. Escribir el log
-                        const newLogRef = doc(cajaLogColRef); // Crea ref con ID automático
+                        const newLogRef = doc(cajaLogColRef); 
                         transaction.set(newLogRef, {
                             tipo: tipoMovimientoActual,
                             monto: monto,
                             concepto: concepto,
-                            fecha: serverTimestamp() // Usar fecha del servidor
+                            fecha: serverTimestamp() 
                         });
                     });
-
-                    // Si la transacción fue exitosa
                     cajaModal.classList.add('hidden');
-
                 } catch (e) {
                     console.error("Error en la transacción de ahorro: ", e);
                     cajaModalError.textContent = `Error: ${e.message}`;
                     cajaModalError.classList.remove('hidden');
                 }
-
                 cajaModalSaveBtn.disabled = false;
                 cajaModalSaveBtn.textContent = "Confirmar";
             }
@@ -718,7 +710,7 @@
             // --- INICIALIZACIÓN DE LA APP ---
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
-            iniciarListenersCaja(); // NUEVO: Iniciar listeners de la caja
+            iniciarListenersCaja(); // Iniciar listeners de la caja
 
             // --- EVENT LISTENERS (GRID) ---
             monthSelect.addEventListener('change', (e) => {
@@ -748,7 +740,6 @@
                     triggerSave();
                     return; 
                 }
-
                 const gastoInput = e.target.closest('[data-name="gasto-input"]');
                 if (gastoInput) {
                     openItemModal(gastoInput);
@@ -778,17 +769,16 @@
                 triggerSave();
             });
 
-            // --- NUEVO: Listeners Modal Caja ---
+            // --- Listeners Modal Caja ---
             cajaDepositoBtn.addEventListener('click', () => openCajaModal('deposito'));
             cajaRetiroBtn.addEventListener('click', () => openCajaModal('retiro'));
 
             cajaModalCloseBtn.addEventListener('click', () => {
                 cajaModal.classList.add('hidden');
-M            });
+            });
 
             cajaModalSaveBtn.addEventListener('click', handleCajaSave);
 
-            // Validar fondos en tiempo real
             cajaModalMonto.addEventListener('input', () => {
                 const monto = parseFloat(cajaModalMonto.value) || 0;
                 if (tipoMovimientoActual === 'retiro' && monto > saldoActualGlobal) {

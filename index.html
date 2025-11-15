@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Resumen Anual)</title>
+    <title>Control de Gastos (Resumen PRO)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -93,7 +93,6 @@
                 <button id="goToRegisterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
                     Registrar Gastos
                 </button>
-                <!-- ****** NUEVO: BOTÓN RESUMEN ANUAL ****** -->
                 <button id="goToSummaryBtn" class="mt-4 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
                     Resumen Anual
                 </button>
@@ -112,7 +111,7 @@
                 </h2>
             </div>
 
-            <!-- ****** CAMBIO: SELECTOR DE MES (LOS COLORES SE APLICAN CON JS) ****** -->
+            <!-- SELECTOR DE MES (LOS COLORES SE APLICAN CON JS) -->
             <select id="month-select" class="w-full text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none cursor-pointer transition-colors duration-300">
                 <!-- Opciones de mes -->
             </select>
@@ -183,7 +182,7 @@
             </div>
         </div>
 
-        <!-- ****** NUEVO: VISTA RESUMEN ANUAL (Oculta) ****** -->
+        <!-- ****** VISTA RESUMEN ANUAL (MODIFICADA) ****** -->
         <div id="summary-view" class="hidden">
             <!-- Header -->
             <div class="flex items-center mb-4">
@@ -198,13 +197,35 @@
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
                 <!-- Total General -->
                 <div class="p-6 text-center bg-gray-800 text-white rounded-t-2xl">
-                    <p class="text-sm font-medium text-gray-300 uppercase">Ganancia Neta (Año)</p>
+                    <!-- *** CAMBIO: Título *** -->
+                    <p class="text-sm font-medium text-gray-300 uppercase">Balance Neto (Año)</p>
                     <p id="summary-total-neto" class="text-4xl font-bold">$0.00</p>
+                    
+                    <!-- *** NUEVO: Totales Ganado/Gastado *** -->
+                    <div class="flex justify-center gap-6 text-sm mt-4 text-gray-300">
+                       <div>
+                           <span class="font-medium">Total Ganado</span>
+                           <p id="summary-total-ganado" class="font-bold text-green-400">$0.00</p>
+                       </div>
+                       <div>
+                           <span class="font-medium">Total Gastado</span>
+                           <p id="summary-total-gastado" class="font-bold text-red-400">$0.00</p>
+                       </div>
+                    </div>
                 </div>
+                
                 <!-- Lista de Meses -->
                 <ul id="summary-list" class="p-4 md:p-6">
                     <li class="text-center text-gray-500 py-8">Cargando resumen...</li>
                 </ul>
+                
+                <!-- *** NUEVO: Sección Gastos por Concepto *** -->
+                <div class="p-4 md:p-6 border-t border-gray-200">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos por Concepto (Anual)</h3>
+                    <ul id="summary-category-list" class="space-y-3 max-h-72 overflow-y-auto">
+                        <li class="text-center text-gray-500 py-4">Calculando...</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -263,13 +284,13 @@
 
     <!-- 4. TODO EL CÓDIGO JAVASCRIPT (AHORA COMO MÓDULO) -->
     <script type="module">
-        // --- IMPORTS DE FIREBASE (AÑADIDOS GETDOCS Y WHERE) ---
+        // --- IMPORTS DE FIREBASE (AÑADIDOS GETDOCS, WHERE Y DOCUMENTID) ---
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, doc, getDoc, setDoc, runTransaction, 
             collection, onSnapshot, query, orderBy, limit, serverTimestamp, addDoc,
-            getDocs, where
+            getDocs, where, documentId
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
@@ -332,11 +353,11 @@
             // --- SELECCIÓN DE ELEMENTOS DEL DOM (GENERAL) ---
             const mainMenu = document.getElementById('main-menu');
             const registerView = document.getElementById('register-view');
-            const summaryView = document.getElementById('summary-view'); // Nuevo
+            const summaryView = document.getElementById('summary-view'); 
             const goToRegisterBtn = document.getElementById('goToRegisterBtn');
-            const goToSummaryBtn = document.getElementById('goToSummaryBtn'); // Nuevo
+            const goToSummaryBtn = document.getElementById('goToSummaryBtn'); 
             const backToMenuBtn = document.getElementById('backToMenuBtn');
-            const backToMenuFromSummaryBtn = document.getElementById('backToMenuFromSummaryBtn'); // Nuevo
+            const backToMenuFromSummaryBtn = document.getElementById('backToMenuFromSummaryBtn'); 
             
             // --- DOM (GRID) ---
             const monthSelect = document.getElementById('month-select');
@@ -376,6 +397,10 @@
             // --- DOM (Resumen Anual) ---
             const summaryList = document.getElementById('summary-list');
             const summaryTotalNeto = document.getElementById('summary-total-neto');
+            // *** NUEVO: Refs a totales ***
+            const summaryTotalGanado = document.getElementById('summary-total-ganado');
+            const summaryTotalGastado = document.getElementById('summary-total-gastado');
+            const summaryCategoryList = document.getElementById('summary-category-list');
 
             // --- CONSTANTES ---
             const AÑO_ACTUAL = new Date().getFullYear();
@@ -387,7 +412,6 @@
                 "ene", "feb", "mar", "abr", "may", "jun", 
                 "jul", "ago", "sep", "oct", "nov", "dic"
             ];
-            // --- NUEVO: COLORES DE MES ---
             const MES_COLORES = [
                 'bg-blue-600',    // Enero (Invierno)
                 'bg-red-600',     // Febrero (San Valentín)
@@ -447,12 +471,9 @@
                 });
             }
             
-            // --- NUEVO: Función para cambiar color del banner ---
             function setBannerColor(mesIndex) {
                 const colorClase = MES_COLORES[mesIndex];
-                // Quitar todos los colores anteriores
                 MES_COLORES.forEach(c => monthSelect.classList.remove(c));
-                // Añadir el nuevo
                 monthSelect.classList.add(colorClase);
             }
 
@@ -478,7 +499,6 @@
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
                 
-                // --- NUEVO: Aplicar color de banner ---
                 setBannerColor(mesNum);
 
                 const thursdays = getThursdays(mesNum, AÑO_ACTUAL);
@@ -486,9 +506,8 @@
                 
                 gridWrapper.dataset.weeks = numSemanas;
 
-                // --- IMPORTANTE: CORRECCIÓN DE DOC ID ---
-                const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`; // Ej: "2025-04" para Mayo
-                const docRef = doc(registrosColRef, docId); // Usar la colección base
+                const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`;
+                const docRef = doc(registrosColRef, docId); 
                 
                 let docData = null;
                 try {
@@ -616,7 +635,6 @@
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
                 
-                // --- IMPORTANTE: CORRECCIÓN DE DOC ID ---
                 const docId = `${AÑO_ACTUAL}-${String(mesIndex).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId);
 
@@ -786,39 +804,54 @@
                 cajaModalSaveBtn.textContent = "Confirmar";
             }
 
-            // --- ****** NUEVO: LÓGICA RESUMEN ANUAL ****** ---
+            // --- ****** LÓGICA RESUMEN ANUAL (MODIFICADA) ****** ---
 
             async function cargarResumenAnual() {
                 summaryList.innerHTML = '<li class="text-center text-gray-500 py-8">Calculando resumen...</li>';
+                summaryCategoryList.innerHTML = '<li class="text-center text-gray-500 py-4">Calculando...</li>';
                 
-                // Query para traer todos los docs del año
                 const q = query(registrosColRef, 
-                    where(doc(registrosColRef).id, '>=', `${AÑO_ACTUAL}-00`), 
-                    where(doc(registrosColRef).id, '<=', `${AÑO_ACTUAL}-11`)
+                    where(documentId(), '>=', `${AÑO_ACTUAL}-00`), 
+                    where(documentId(), '<=', `${AÑO_ACTUAL}-11`)
                 );
                 
                 let granTotalNeto = 0;
-                // Inicializar un array para los 12 meses
+                let granTotalSueldo = 0; // Nuevo
+                let granTotalGasto = 0;  // Nuevo
+                let gastosPorConcepto = {}; // Nuevo
                 let mesesData = new Array(12).fill(null);
 
                 try {
                     const querySnapshot = await getDocs(q);
 
                     querySnapshot.forEach(doc => {
-                        const docId = doc.id; // Ej: "2025-05"
-                        const mesIndex = parseInt(docId.split('-')[1], 10); // Ej: 5
+                        const docId = doc.id; 
+                        const mesIndex = parseInt(docId.split('-')[1], 10);
                         const data = doc.data();
 
                         // Calcular totales del mes
                         const totalSueldoMes = data.sueldo.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
-                        const totalGastoMes = data.gastos.reduce((acc, gasto) => {
-                            return acc + gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
-                        }, 0);
+                        
+                        let totalGastoMes = 0;
+                        data.gastos.forEach(gasto => {
+                            const concepto = gasto.concepto.trim();
+                            const totalGastoConcepto = gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
+                            
+                            totalGastoMes += totalGastoConcepto; // Sumar al total del mes
+
+                            if (concepto) { // Solo si tiene nombre
+                                const conceptoKey = concepto.toLowerCase(); // Normalizar
+                                gastosPorConcepto[conceptoKey] = (gastosPorConcepto[conceptoKey] || 0) + totalGastoConcepto;
+                            }
+                        });
                         
                         const totalNetoMes = totalSueldoMes - totalGastoMes;
+                        
+                        // Sumar a totales anuales
                         granTotalNeto += totalNetoMes;
+                        granTotalSueldo += totalSueldoMes;
+                        granTotalGasto += totalGastoMes;
 
-                        // Guardar en el array en la posición correcta
                         mesesData[mesIndex] = {
                             totalSueldoMes,
                             totalGastoMes,
@@ -826,47 +859,67 @@
                         };
                     });
 
-                    // Renderizar los datos
+                    // --- Renderizar Resumen Mensual ---
                     summaryList.innerHTML = ""; // Limpiar
                     MESES.forEach((mesNombre, index) => {
                         const data = mesesData[index];
                         const li = document.createElement('li');
-li.className = "summary-item";
+                        li.className = "summary-item";
 
                         if (data) {
                             const netoColor = data.totalNetoMes >= 0 ? 'text-green-600' : 'text-red-600';
+                            const netoSigno = data.totalNetoMes >= 0 ? '+' : '';
                             li.innerHTML = `
-                                <div>
+                                <div class="flex-1">
                                     <p class="text-lg font-bold text-gray-900">${mesNombre}</p>
-                                    <p class="text-sm text-gray-500">Sueldo: $${data.totalSueldoMes.toFixed(2)}</p>
+                                    <div class="flex flex-col sm:flex-row sm:gap-4 text-sm">
+                                       <span class="text-green-600">Sueldo: $${data.totalSueldoMes.toFixed(2)}</span>
+                                       <span class="text-red-600">Gasto: $${data.totalGastoMes.toFixed(2)}</span>
+                                    </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-lg font-bold font-mono ${netoColor}">$${data.totalNetoMes.toFixed(2)}</p>
-                                    <p class="text-sm text-gray-500">Gasto: $${data.totalGastoMes.toFixed(2)}</p>
+                                    <p class="text-sm text-gray-500">Balance</p>
+                                    <p class="text-lg font-bold font-mono ${netoColor}">${netoSigno}$${data.totalNetoMes.toFixed(2)}</p>
                                 </div>
                             `;
                         } else {
-                            // Mes sin datos
                             li.innerHTML = `
-                                <div>
-                                    <p class="text-lg font-bold text-gray-400">${mesNombre}</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-lg font-mono text-gray-400">Sin datos</p>
-                                </div>
+                                <div><p class="text-lg font-bold text-gray-400">${mesNombre}</p></div>
+                                <div class="text-right"><p class="text-lg font-mono text-gray-400">Sin datos</p></div>
                             `;
                         }
                         summaryList.appendChild(li);
                     });
 
-                    // Actualizar Gran Total
-                    summaryTotalNeto.textContent = `$${granTotalNeto.toFixed(2)}`;
+                    // --- Renderizar Totales Anuales ---
+                    summaryTotalNeto.textContent = `${granTotalNeto >= 0 ? '+' : ''}$${granTotalNeto.toFixed(2)}`;
                     summaryTotalNeto.classList.toggle('text-green-400', granTotalNeto >= 0);
                     summaryTotalNeto.classList.toggle('text-red-400', granTotalNeto < 0);
+                    summaryTotalGanado.textContent = `$${granTotalSueldo.toFixed(2)}`;
+                    summaryTotalGastado.textContent = `-$${granTotalGasto.toFixed(2)}`;
+                    
+                    // --- Renderizar Gastos por Concepto ---
+                    summaryCategoryList.innerHTML = ""; // Limpiar
+                    const sortedGastos = Object.entries(gastosPorConcepto).sort((a, b) => b[1] - a[1]);
+                    
+                    if (sortedGastos.length === 0) {
+                        summaryCategoryList.innerHTML = '<li class="text-center text-gray-500">No hay gastos con concepto.</li>';
+                    } else {
+                        sortedGastos.forEach(([concepto, total]) => {
+                            const li = document.createElement('li');
+                            li.className = "flex justify-between items-center py-2 border-b border-gray-100";
+                            li.innerHTML = `
+                                <span class="text-base text-gray-800 capitalize">${concepto}</span>
+                                <span class="text-base font-mono font-bold text-red-600">-$${total.toFixed(2)}</span>
+                            `;
+                            summaryCategoryList.appendChild(li);
+                        });
+                    }
 
                 } catch (e) {
                     console.error("Error cargando resumen anual: ", e);
-                    summaryList.innerHTML = '<li class="text-center text-red-500 py-8">Error al cargar resumen.</li>';
+                    summaryList.innerHTML = `<li class="text-center text-red-500 py-8">Error al cargar resumen: ${e.message}</li>`;
+                    summaryCategoryList.innerHTML = `<li class="text-center text-red-500 py-4">Error</li>`;
                 }
             }
 

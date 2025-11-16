@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Metas y Reportes)</title>
+    <title>Control de Gastos (Splash Pro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -41,7 +41,7 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 16px 0; border-bottom: 1px solid #e5e7eb;
         }
-        /* NUEVO: Hacer clickables los conceptos */
+        /* Hacer clickables los conceptos */
         #summary-category-list li { cursor: pointer; transition: background-color 0.1s; }
         #summary-category-list li:hover { background-color: #f9fafb; /* gray-50 */ }
         
@@ -64,15 +64,54 @@
         .gasto-planeado input[type="text"] { background-color: #f3f4f6; font-style: italic; }
         .gasto-planeado .monto-planeado { background-color: #e5e7eb; color: #4b5563; font-style: italic; cursor: default !important; }
         
-        /* NUEVO: Estilos Metas de Ahorro */
+        /* Estilos Metas de Ahorro */
         .progress-bar { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; height: 8px; }
         .progress-bar-inner {
             background-color: #22c55e; /* green-500 */
             height: 100%; transition: width 0.5s ease-in-out;
         }
+        
+        /* <<<--- INICIO: Estilos Splash Screen --- */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #111827; /* gray-900 */
+            color: white;
+            transition: opacity 0.5s ease-out;
+        }
+        #splash-screen.splash-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #splash-screen .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        /* <<<--- FIN: Estilos Splash Screen --- */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen antialiased">
+
+    <!-- <<<--- INICIO: Splash Screen Mamalón --- */ -->
+    <div id="splash-screen">
+        <!-- Ícono de "Banknotes" Mamalón (Sólido) -->
+        <svg class="w-24 h-24 text-blue-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11.25 7.5c0-1.036.84-1.875 1.875-1.875h.375c.621 0 1.125.504 1.125 1.125s-.504 1.125-1.125 1.125h-.375c-.345 0-.625.28-.625.625s.28.625.625.625h.375c1.036 0 1.875.84 1.875 1.875v.375c0 .621-.504 1.125-1.125 1.125s-1.125-.504-1.125-1.125v-.375c0-.345-.28-.625-.625-.625s-.625.28-.625.625v.375c0 1.036.84 1.875 1.875 1.875h.375c1.71 0 3.125-1.39 3.125-3.125v-1.875C16.125 7.89 14.735 6.5 13.125 6.5h-.375C11.16 6.5 9.75 7.89 9.75 9.5v1.875c0 1.71 1.39 3.125 3.125 3.125h.375c.621 0 1.125-.504 1.125-1.125s-.504-1.125-1.125-1.125h-.375c-1.036 0-1.875-.84-1.875-1.875v-.375Z" />
+          <path fill-rule="evenodd" d="M.75 6v-.91c0-1.12.86-2.054 1.965-2.076A13.6 13.6 0 0 1 12 2.969c4.89 0 9.21.848 11.285 2.046 1.104.022 1.965.957 1.965 2.076V6c0 .414-.336.75-.75.75H1.5a.75.75 0 0 1-.75-.75Zm0 0v1.5A.75.75 0 0 0 1.5 8.25h21a.75.75 0 0 0 .75-.75v-1.5m-21 3V18c0 .414.336.75.75.75h21a.75.75 0 0 0 .75-.75v-7.5H.75Z" clip-rule="evenodd" />
+        </svg>
+        <h1 class="text-3xl font-bold mt-4">Control de Gastos</h1>
+        <p class="text-gray-400 text-lg mt-2">Conectando...</p>
+    </div>
+    <!-- <<<--- FIN: Splash Screen Mamalón --- */ -->
+
 
     <!-- Contenedor principal de la App -->
     <div id="app-container" class="container mx-auto max-w-6xl p-4 md:p-8 pb-24">
@@ -294,10 +333,14 @@
              <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             <span class="text-xs font-medium">Caja</span>
         </button>
+        <!-- <<<--- INICIO DE LA CORRECCIÓN: Ícono de Ajustes "cog-6-tooth" (Engrane de 6 Dientes) -->
         <button id="tab-ajustes" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="ajustes-view">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.573-1.066z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-1.006 1.11-1.226l.05-.022c.49-.18 1.02-.18 1.51 0l.05.022c.55.22 1.02.684 1.11 1.226l.017.104c.045.282.087.56.134.832.09.515.27.99.53 1.416.29.455.68.85 1.12 1.19l.04.03c.42.32.87.58 1.35.79.48.21.99.35 1.51.43l.1.017c.542.09.96.52 1.09 1.04l.022.05c.18.49.18 1.02 0 1.51l-.022.05c-.13.52-.55.95-1.09 1.04l-.1.017c-.52.08-.99.22-1.51.43a4.5 4.5 0 0 1-1.35.79l-.04.03c-.44.34-.83.73-1.12 1.19-.26.42-.44.9-.53 1.41l-.017.104c-.09.542-.56 1.006-1.11 1.226l-.05.022c-.49-.18-1.02-.18-1.51 0l-.05-.022c-.55-.22-1.02-.684-1.11-1.226l-.017-.104c-.045-.282-.087-.56-.134-.832-.09-.515-.27-.99-.53-1.416a4.5 4.5 0 0 1-1.12-1.19l-.04-.03c-.42-.32-.87-.58-1.35-.79a4.5 4.5 0 0 1-1.51-.43l-.1-.017c-.542-.09-.96-.52-1.09-1.04l-.022-.05c-.18-.49-.18-1.02 0-1.51l.022-.05c.13-.52.55-.95 1.09-1.04l.1-.017c.52-.08.99-.22 1.51-.43.48-.21.93-.47 1.35-.79l.04-.03c.44-.34.83-.73 1.12-1.19.26-.42.44-.9.53-1.41l.017-.104zM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5z" />
+            </svg>
             <span class="text-xs font-medium">Ajustes</span>
         </button>
+        <!-- <<<--- FIN DE LA CORRECCIÓN -->
     </nav>
 
 
@@ -445,12 +488,12 @@
         
         let app, auth, db, userId;
         let cajaDocRef, cajaLogColRef, registrosColRef, gastosFijosColRef;
-        let metasColRef; // NUEVO
-        let saldoCajaGlobal = 0; // Saldo TOTAL
-        let saldoDisponibleGlobal = 0; // Saldo NO ASIGNADO
+        let metasColRef; 
+        let saldoCajaGlobal = 0; 
+        let saldoDisponibleGlobal = 0; 
         let tipoMovimientoActual = 'deposito'; 
         let gastosChartInstance = null;
-        let tendenciaChartInstance = null; // NUEVO
+        let tendenciaChartInstance = null; 
         
         // setLogLevel('Debug'); 
 
@@ -468,9 +511,7 @@
                             cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
                             registrosColRef = collection(db, 'usuarios', userId, 'registros');
                             gastosFijosColRef = collection(db, 'usuarios', userId, 'gastos_fijos');
-                            // <<<--- INICIO DE LA CORRECCIÓN
-                            metasColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'metas'); // CORREGIDO: 5 segmentos
-                            // <<<--- FIN DE LA CORRECCIÓN
+                            metasColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'metas'); // Ruta corregida
                             resolve();
                         } else {
                             try { await signInAnonymously(auth); } catch (e) { reject(e); }
@@ -480,7 +521,7 @@
                 initializeAppLogic();
             } catch (error) {
                 console.error("Error al inicializar Firebase:", error);
-                alert("Error fatal: No se pudo conectar a la base de datos. " + error.message);
+                document.getElementById('splash-screen').innerHTML = `<h1 class="text-red-500 text-xl p-8">Error fatal: ${error.message}</h1>`;
             }
         });
 
@@ -492,6 +533,8 @@
             const cajaView = document.getElementById('caja-view');
             const ajustesView = document.getElementById('ajustes-view');
             const views = [registerView, summaryView, cajaView, ajustesView];
+            // --- DOM (SPLASH) ---
+            const splashScreen = document.getElementById('splash-screen');
             // --- DOM (TAB BAR) ---
             const tabRegistro = document.getElementById('tab-registro');
             const tabResumen = document.getElementById('tab-resumen');
@@ -518,12 +561,12 @@
             let currentModalInput = null; 
             // --- DOM (Caja de Ahorro) ---
             const cajaSaldoEl = document.getElementById('caja-saldo');
-            const cajaDisponibleEl = document.getElementById('caja-disponible'); // NUEVO
+            const cajaDisponibleEl = document.getElementById('caja-disponible'); 
             const cajaLogEl = document.getElementById('caja-log');
             const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
             const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
-            const nuevaMetaBtn = document.getElementById('nueva-meta-btn'); // NUEVO
-            const metasListaEl = document.getElementById('metas-lista'); // NUEVO
+            const nuevaMetaBtn = document.getElementById('nueva-meta-btn'); 
+            const metasListaEl = document.getElementById('metas-lista'); 
             // --- DOM (Modal Caja) ---
             const cajaModal = document.getElementById('caja-modal');
             const cajaModalTitle = document.getElementById('caja-modal-title');
@@ -546,7 +589,7 @@
             const abonarMetaError = document.getElementById('abonar-meta-error');
             const abonarMetaCloseBtn = document.getElementById('abonar-meta-close-btn');
             const abonarMetaSaveBtn = document.getElementById('abonar-meta-save-btn');
-            let metaActualId = null; // Para saber a qué meta abonar
+            let metaActualId = null; 
             // --- DOM (Resumen Anual) ---
             const summaryList = document.getElementById('summary-list');
             const summaryTotalTitle = document.getElementById('summary-total-title');
@@ -554,7 +597,7 @@
             const summaryTotalGanado = document.getElementById('summary-total-ganado');
             const summaryTotalGastado = document.getElementById('summary-total-gastado');
             const summaryCategoryList = document.getElementById('summary-category-list');
-            const resumenMonthFilter = document.getElementById('resumen-month-filter'); // NUEVO
+            const resumenMonthFilter = document.getElementById('resumen-month-filter'); 
             const toggleLista = document.getElementById('toggle-lista');
             const toggleGrafica = document.getElementById('toggle-grafica');
             const summaryListaView = document.getElementById('summary-lista-view');
@@ -587,8 +630,8 @@
                 });
                 clickedButton.classList.add('active', 'text-blue-600');
                 clickedButton.classList.remove('text-gray-500');
-                if (viewId === 'summary-view') { cargarResumen(); } // Carga con filtro
-                if (viewId === 'caja-view') { iniciarListenersCaja(); } // Llama a caja
+                if (viewId === 'summary-view') { cargarResumen(); } 
+                if (viewId === 'caja-view') { iniciarListenersCaja(); } 
                 window.scrollTo(0, 0);
             }
             tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
@@ -604,7 +647,6 @@
                     option.className = "bg-white text-gray-900 text-base font-normal normal-case tracking-normal";
                     monthSelect.appendChild(option);
                     
-                    // NUEVO: Llenar filtro de resumen
                     const filterOption = document.createElement('option');
                     filterOption.value = index;
                     filterOption.textContent = mes;
@@ -720,6 +762,15 @@
                     calcularTotales();
                     saveStatusEl.textContent = "Listo ✔";
                     if (seAgregaronNuevosGastosFijos) { triggerSave(); }
+                    
+                    // <<<--- INICIO: Ocultar Splash Screen --- */
+                    // Se oculta después de que la primera grilla se dibuja
+                    if (splashScreen && !splashScreen.classList.contains('splash-hidden')) {
+                        splashScreen.classList.add('splash-hidden');
+                        setTimeout(() => { splashScreen.classList.add('hidden'); }, 500); // Ocultarlo del DOM después de la transición
+                    }
+                    // <<<--- FIN: Ocultar Splash Screen --- */
+                    
                 } catch (e) {
                     console.error("Error cargando datos: ", e);
                     saveStatusEl.textContent = "Error al cargar ❌";
@@ -985,15 +1036,10 @@
                     cajaModalError.classList.remove('hidden'); return;
                 }
                 
-                // Si es retiro, validamos contra el SALDO TOTAL (no el disponible)
-                // NO PUEDES retirar más de lo que hay en la caja
                 if (tipoMovimientoActual === 'retiro' && monto > saldoCajaGlobal) {
                     cajaModalError.textContent = "Fondos insuficientes (total de caja).";
                     cajaModalError.classList.remove('hidden'); return;
                 }
-                // ADVERTENCIA: Si retiras, puedes hacer que tu saldo disponible sea negativo
-                // (Ej: Tienes $1000, asignaste $800. Disponible $200. Retiras $500. Saldo total $500, Asignado $800, Disponible $-300)
-                // Esto es financieramente correcto, la app te dice "DEBES $300 a tus metas"
                 
                 cajaModalSaveBtn.disabled = true;
                 cajaModalSaveBtn.textContent = "Guardando...";
@@ -1077,7 +1123,6 @@
                     if (window.confirm(`¿Seguro que quieres borrar esta meta? (Se liberarán $${asignado.toFixed(2)} al Saldo Disponible)`)) {
                         try {
                             await deleteDoc(doc(metasColRef, id));
-                            // No es necesario sumar a saldoCajaGlobal, solo se recalcula el disponible
                             actualizarSaldosDisponibles(); 
                         } catch (e) { console.error("Error borrando meta:", e); }
                     }

@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Dashboard v1)</title>
+    <title>Control de Gastos (Confirmar Pagos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- NUEVO: Importar Chart.js para las gráficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
@@ -19,86 +18,58 @@
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            overscroll-behavior: none;
-        }
+        body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
         input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
-        .horizontal-scroll {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        #grid-wrapper[data-weeks="4"] .week-5 {
-            display: none;
-        }
-        input[type="number"], input[type="text"], textarea {
-            font-size: 16px !important; /* Anti-zoom iOS */
-        }
-        /* Estilos para el log de movimientos */
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .horizontal-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #grid-wrapper[data-weeks="4"] .week-5 { display: none; }
+        input[type="number"], input[type="text"], textarea { font-size: 16px !important; }
+        /* Estilos para logs */
         #caja-log li, #gastos-fijos-lista li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid #e5e7eb;
         }
-        #caja-log li:last-child, #gastos-fijos-lista li:last-child {
-            border-bottom: none;
-        }
-        #caja-log .log-concepto, #gastos-fijos-lista .log-concepto {
-            font-size: 0.9rem;
-        }
-        #caja-log .log-fecha {
-            font-size: 0.75rem;
-            color: #6b7280; /* gray-500 */
-        }
+        #caja-log li:last-child, #gastos-fijos-lista li:last-child { border-bottom: none; }
+        #caja-log .log-concepto, #gastos-fijos-lista .log-concepto { font-size: 0.9rem; }
+        #caja-log .log-fecha { font-size: 0.75rem; color: #6b7280; }
         #caja-log .log-monto.deposito { color: #16a34a; }
         #caja-log .log-monto.retiro { color: #dc2626; }
         #gastos-fijos-lista .log-monto { color: #dc2626; }
-
-        /* Estilos para Resumen Anual */
+        /* Estilos Resumen */
         #summary-list .summary-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 0;
-            border-bottom: 1px solid #e5e7eb;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 0; border-bottom: 1px solid #e5e7eb;
         }
         #summary-list .summary-item:last-child { border-bottom: none; }
-        
-        /* Estilos para Tab Bar Activa */
-        .tab-button.active {
-            color: #2563eb; /* text-blue-600 */
-        }
-        
-        /* Estilos para el Toggle/Switch de Resumen */
-        .summary-toggle {
-            display: flex;
-            border-radius: 9999px;
-            background-color: #e5e7eb; /* gray-200 */
-            padding: 4px;
-        }
+        /* Estilos Tab Bar */
+        .tab-button.active { color: #2563eb; }
+        /* Estilos Toggle Resumen */
+        .summary-toggle { display: flex; border-radius: 9999px; background-color: #e5e7eb; padding: 4px; }
         .summary-toggle button {
-            border-radius: 9999px;
-            padding: 6px 16px;
-            font-weight: 500;
-            color: #6b7280; /* gray-500 */
-            transition: all 0.2s ease-in-out;
-            outline: none;
-            border: none;
-            background-color: transparent;
+            border-radius: 9999px; padding: 6px 16px; font-weight: 500;
+            color: #6b7280; transition: all 0.2s ease-in-out;
+            outline: none; border: none; background-color: transparent;
         }
         .summary-toggle button.active {
-            background-color: #ffffff; /* white */
-            color: #111827; /* gray-900 */
+            background-color: #ffffff; color: #111827;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        /* NUEVO: Estilos para fila planeada */
+        .gasto-planeado {
+            background-color: #f3f4f6; /* gray-100 */
+            opacity: 0.8;
+            border-style: dashed;
+        }
+        .gasto-planeado input[type="text"] {
+            background-color: #f3f4f6; /* gray-100 */
+            font-style: italic;
+        }
+        .gasto-planeado .monto-planeado {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #4b5563; /* gray-600 */
+            font-style: italic;
+            cursor: default !important;
         }
     </style>
 </head>
@@ -116,9 +87,7 @@
 
             <!-- Contenedor del Grid -->
             <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
-                
                 <div class="horizontal-scroll">
-                    <!-- Wrapper del Grid -->
                     <div id="grid-wrapper" class="min-w-[800px] md:min-w-full" data-weeks="5">
                         <!-- Encabezado del Grid -->
                         <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2 text-base">
@@ -160,7 +129,7 @@
                 <h2 class="text-3xl font-bold text-gray-900 text-center">
                     Resumen Anual
                 </h2>
-                <!-- NUEVO: Toggle de vista -->
+                <!-- Toggle de vista -->
                 <div class="flex justify-center mt-4">
                     <div class="summary-toggle">
                         <button id="toggle-lista" class="active">Lista</button>
@@ -250,7 +219,7 @@
             </div>
         </div>
         
-        <!-- NUEVO: VISTA AJUSTES (Oculta) -->
+        <!-- VISTA AJUSTES (Oculta) -->
         <div id="ajustes-view" class="hidden">
             <!-- Header Limpio -->
             <div class="bg-white p-4 rounded-t-2xl shadow-lg">
@@ -264,7 +233,7 @@
                 <div class="p-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos Fijos (Piloto Automático)</h3>
                     <p class="text-gray-600 mb-4 text-sm">
-                        Agrega gastos que se repiten cada mes (Netflix, Renta, etc.). Se cargarán automáticamente la primera vez que abras un nuevo mes.
+                        Agrega gastos que se repiten cada mes. Aparecerán como un recordatorio en tu tabla mensual.
                     </p>
                     <!-- Formulario para agregar -->
                     <form id="gasto-fijo-form" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -298,7 +267,7 @@
 
     </div> <!-- Fin App Container -->
 
-    <!-- ****** TAB BAR FIJA (CON 4 TABS) ****** -->
+    <!-- TAB BAR FIJA (CON 4 TABS) -->
     <nav class="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 shadow-t-lg z-50 flex justify-around">
         <!-- Tab 1: Registro -->
         <button id="tab-registro" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-blue-600 active" data-view="register-view">
@@ -315,7 +284,7 @@
              <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             <span class="text-xs font-medium">Caja</span>
         </button>
-        <!-- NUEVO Tab 4: Ajustes -->
+        <!-- Tab 4: Ajustes -->
         <button id="tab-ajustes" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="ajustes-view">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.573-1.066z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             <span class="text-xs font-medium">Ajustes</span>
@@ -396,11 +365,10 @@
         };
         
         let app, auth, db, userId;
-        
-        let cajaDocRef, cajaLogColRef, registrosColRef, gastosFijosColRef; // Nueva ref
+        let cajaDocRef, cajaLogColRef, registrosColRef, gastosFijosColRef;
         let saldoActualGlobal = 0;
         let tipoMovimientoActual = 'deposito'; 
-        let gastosChartInstance = null; // Para la gráfica
+        let gastosChartInstance = null;
         
         // setLogLevel('Debug'); 
 
@@ -414,28 +382,17 @@
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             userId = user.uid;
-                            // Definir rutas principales
                             cajaDocRef = doc(db, 'usuarios', userId, 'ahorro', 'caja');
                             cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
                             registrosColRef = collection(db, 'usuarios', userId, 'registros');
-                            gastosFijosColRef = collection(db, 'usuarios', userId, 'gastos_fijos'); // Nueva ref
+                            gastosFijosColRef = collection(db, 'usuarios', userId, 'gastos_fijos');
                             resolve();
                         } else {
-                            try {
-                                await signInAnonymously(auth);
-                            } catch (authError) {
-                                console.error("Error signing in anonymously:", authError);
-                                reject(authError);
-                            }
+                            try { await signInAnonymously(auth); } catch (e) { reject(e); }
                         }
-                    }, (error) => {
-                        console.error("Auth error:", error);
-                        reject(error);
-                    });
+                    }, (error) => reject(error));
                 });
-
                 initializeAppLogic();
-
             } catch (error) {
                 console.error("Error al inicializar Firebase:", error);
                 alert("Error fatal: No se pudo conectar a la base de datos. " + error.message);
@@ -448,16 +405,14 @@
             const registerView = document.getElementById('register-view');
             const summaryView = document.getElementById('summary-view'); 
             const cajaView = document.getElementById('caja-view');
-            const ajustesView = document.getElementById('ajustes-view'); // Nueva
+            const ajustesView = document.getElementById('ajustes-view');
             const views = [registerView, summaryView, cajaView, ajustesView];
-
             // --- DOM (TAB BAR) ---
             const tabRegistro = document.getElementById('tab-registro');
             const tabResumen = document.getElementById('tab-resumen');
             const tabCaja = document.getElementById('tab-caja');
-            const tabAjustes = document.getElementById('tab-ajustes'); // Nueva
+            const tabAjustes = document.getElementById('tab-ajustes');
             const tabButtons = [tabRegistro, tabResumen, tabCaja, tabAjustes];
-            
             // --- DOM (GRID) ---
             const monthSelect = document.getElementById('month-select');
             const gridWrapper = document.getElementById('grid-wrapper');
@@ -468,7 +423,6 @@
             const totalsGastosRow = document.getElementById('totals-gastos-row');
             const totalsRestanteRow = document.getElementById('totals-restante-row');
             const saveStatusEl = document.getElementById('save-status');
-
             // --- DOM (Modal Gasto) ---
             const itemModal = document.getElementById('item-modal');
             const modalTitle = document.getElementById('modal-title');
@@ -477,13 +431,11 @@
             const modalCloseBtn = document.getElementById('modal-close-btn');
             const modalSaveBtn = document.getElementById('modal-save-btn');
             let currentModalInput = null; 
-
             // --- DOM (Caja de Ahorro) ---
             const cajaSaldoEl = document.getElementById('caja-saldo');
             const cajaLogEl = document.getElementById('caja-log');
             const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
             const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
-
             // --- DOM (Modal Caja) ---
             const cajaModal = document.getElementById('caja-modal');
             const cajaModalTitle = document.getElementById('caja-modal-title');
@@ -492,60 +444,49 @@
             const cajaModalError = document.getElementById('caja-modal-error');
             const cajaModalCloseBtn = document.getElementById('caja-modal-close-btn');
             const cajaModalSaveBtn = document.getElementById('caja-modal-save-btn');
-
             // --- DOM (Resumen Anual) ---
             const summaryList = document.getElementById('summary-list');
             const summaryTotalNeto = document.getElementById('summary-total-neto');
             const summaryTotalGanado = document.getElementById('summary-total-ganado');
             const summaryTotalGastado = document.getElementById('summary-total-gastado');
             const summaryCategoryList = document.getElementById('summary-category-list');
-            // Nuevos (Gráfica)
             const toggleLista = document.getElementById('toggle-lista');
             const toggleGrafica = document.getElementById('toggle-grafica');
             const summaryListaView = document.getElementById('summary-lista-view');
             const summaryGraficaView = document.getElementById('summary-grafica-view');
             const chartCanvas = document.getElementById('gastos-chart');
-            
             // --- DOM (Ajustes) ---
             const gastoFijoForm = document.getElementById('gasto-fijo-form');
             const gastoFijoConcepto = document.getElementById('gasto-fijo-concepto');
             const gastoFijoMonto = document.getElementById('gasto-fijo-monto');
             const gastoFijoDia = document.getElementById('gasto-fijo-dia');
             const gastosFijosLista = document.getElementById('gastos-fijos-lista');
-
             // --- CONSTANTES ---
             const AÑO_ACTUAL = new Date().getFullYear();
             const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const MES_ABREVIADO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
             const MES_COLORES = ['bg-blue-600', 'bg-red-600', 'bg-yellow-500', 'bg-green-500', 'bg-pink-500', 'bg-cyan-500', 'bg-orange-600', 'bg-amber-600', 'bg-green-700', 'bg-orange-800', 'bg-purple-700', 'bg-red-700'];
-
             let saveTimeout; 
 
             // --- LÓGICA DE NAVEGACIÓN (TAB BAR) ---
             function handleTabClick(e) {
                 const clickedButton = e.currentTarget;
                 const viewId = clickedButton.dataset.view;
-
                 views.forEach(view => view.classList.add('hidden'));
                 document.getElementById(viewId).classList.remove('hidden');
-
                 tabButtons.forEach(button => {
                     button.classList.remove('active', 'text-blue-600');
                     button.classList.add('text-gray-500');
                 });
                 clickedButton.classList.add('active', 'text-blue-600');
                 clickedButton.classList.remove('text-gray-500');
-
                 if (viewId === 'summary-view') { cargarResumenAnual(); }
                 if (viewId === 'ajustes-view') { iniciarListenersAjustes(); }
-                
                 window.scrollTo(0, 0);
             }
-            
             tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
 
             // --- LÓGICA PRINCIPAL DEL REGISTRO (GRID) ---
-
             function popularMeses() {
                 const mesActual = new Date().getMonth();
                 MESES.forEach((mes, index) => {
@@ -557,13 +498,11 @@
                     monthSelect.appendChild(option);
                 });
             }
-            
             function setBannerColor(mesIndex) {
                 const colorClase = MES_COLORES[mesIndex];
                 MES_COLORES.forEach(c => monthSelect.classList.remove(c));
                 monthSelect.classList.add(colorClase);
             }
-
             function getThursdays(mes, año) {
                 const mesNumero = parseInt(mes, 10);
                 let thursdays = [];
@@ -575,7 +514,6 @@
                 }
                 return thursdays;
             }
-            
             function formatDate(date) {
                 const dia = String(date.getDate()).padStart(2, '0');
                 const mes = MES_ABREVIADO[date.getMonth()];
@@ -586,14 +524,11 @@
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
                 setBannerColor(mesNum);
-
                 const thursdays = getThursdays(mesNum, AÑO_ACTUAL);
                 const numSemanas = thursdays.length;
                 gridWrapper.dataset.weeks = numSemanas;
-
                 const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId); 
-                
                 let docData = null;
                 let docExiste = false;
                 try {
@@ -602,14 +537,12 @@
                         docData = docSnap.data();
                         docExiste = true;
                     } else {
-                        // ¡NUEVO! Precargar gastos fijos si el doc no existe
                         docData = await precargarGastosFijos(thursdays);
                     }
                 } catch (e) {
                     console.error("Error cargando datos: ", e);
                     saveStatusEl.textContent = "Error al cargar ❌";
                 }
-
                 // 1. Dibujar Encabezado
                 let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
                 for (let i = 0; i < 5; i++) {
@@ -619,10 +552,9 @@
                     headerHTML += `<div class="text-center p-2 ${weekClass}">${label}</div>`;
                 }
                 gridHeader.innerHTML = headerHTML;
-
                 // 2. Dibujar Cuerpo
                 gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(gasto => gasto.remove());
-
+                gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(gasto => gasto.remove()); // NUEVO
                 sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
                 let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
                 for (let i = 0; i < 5; i++) {
@@ -634,14 +566,17 @@
                 
                 if (docData && docData.gastos && docData.gastos.length > 0) {
                     docData.gastos.forEach(gasto => {
-                        agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles);
+                        // NUEVO: Cargar gastos planeados o normales
+                        if (gasto.esPlaneado) {
+                            agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles, true);
+                        } else {
+                            agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles, false);
+                        }
                     });
                 }
-                // Si después de precargar sigue vacío, agregar una fila
-                if (gridBody.querySelectorAll('[data-row-type="gasto"]').length === 0) {
+                if (gridBody.querySelectorAll('[data-row-type="gasto"]').length === 0 && gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').length === 0) {
                     agregarFilaDeGasto(); 
                 }
-
                 // 3. Dibujar Pie (Totales)
                 let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
                 let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
@@ -652,91 +587,91 @@
                 }
                 totalsGastosRow.innerHTML = totalGastoHTML;
                 totalsRestanteRow.innerHTML = totalRestanteHTML;
-                
                 calcularTotales();
                 saveStatusEl.textContent = "Listo ✔";
-                
-                // Guardar los datos precargados si era un doc nuevo
-                if (!docExiste) {
-                    triggerSave();
-                }
+                if (!docExiste) { triggerSave(); }
             }
             
-            // --- NUEVO: Función para precargar gastos fijos ---
             async function precargarGastosFijos(thursdays) {
                 let gastosPrecargados = [];
                 try {
                     const querySnapshot = await getDocs(gastosFijosColRef);
-                    const thursdayDates = thursdays.map(d => d.getDate()); // [7, 14, 21, 28]
-
                     querySnapshot.forEach(doc => {
                         const gasto = doc.data();
                         const dia = gasto.dia;
-                        
-                        // Encontrar la semana correcta
                         let weekIndex = -1;
-                        // Lógica para asignar a la semana: el pago pertenece a la semana del jueves
-                        // que es IGUAL o MAYOR a (día de pago - 3 días).
-                        // Ej: Pago el día 5. Jueves son [7, 14]. 5 >= 7-3 (4). Cae en semana 0.
-                        // Ej: Pago el día 8. Jueves son [7, 14]. 8 >= 7-3 (4). Cae en semana 0.
-                        // Ej: Pago el día 12. Jueves son [7, 14]. 12 >= 14-3 (11). Cae en semana 1.
-                        // Esta lógica es más robusta:
                         for (let i = 0; i < thursdays.length; i++) {
                             const diaJueves = thursdays[i].getDate();
                             const diaLimite = (i === 0) ? 1 : thursdays[i-1].getDate() + 1;
-                            
-                            if (dia >= diaLimite && dia <= diaJueves) {
-                                weekIndex = i;
-                                break;
-                            }
+                            if (dia >= diaLimite && dia <= diaJueves) { weekIndex = i; break; }
                         }
-                        // Si cayó después del último jueves
-                        if (weekIndex === -1) {
-                            weekIndex = thursdays.length - 1;
-                        }
-
+                        if (weekIndex === -1) { weekIndex = thursdays.length - 1; }
                         let montos = ["", "", "", "", ""];
                         montos[weekIndex] = gasto.monto;
                         
                         gastosPrecargados.push({
                             concepto: gasto.concepto,
                             montos: montos,
-                            detalles: ["", "", "", "", ""]
+                            detalles: ["", "", "", "", ""],
+                            esPlaneado: true // NUEVO FLAG
                         });
                     });
-                } catch (e) {
-                    console.error("Error precargando gastos fijos:", e);
-                }
+                } catch (e) { console.error("Error precargando gastos fijos:", e); }
                 return { sueldo: ["", "", "", "", ""], gastos: gastosPrecargados };
             }
 
-            function agregarFilaDeGasto(concepto = "", montos = [], detalles = []) {
+            // --- NUEVO: Lógica de agregarFilaDeGasto modificada ---
+            function agregarFilaDeGasto(concepto = "", montos = [], detalles = [], esPlaneado = false) {
                 const gastoRow = document.createElement('div');
-                gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
-                gastoRow.dataset.rowType = "gasto";
-                gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
-
-                let gastoHTML = `
-                    <div class="sticky left-0 z-5 flex items-center gap-2 bg-white pr-2">
-                        <input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
-                        <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>`;
+                let gastoHTML = '';
                 
-                for (let i = 0; i < 5; i++) {
-                    const montoValor = montos[i] || ""; 
-                    const weekClass = (i === 4) ? 'week-5' : '';
-                    gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" readonly class="bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200 ${weekClass}">`;
+                if (esPlaneado) {
+                    gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg gasto-planeado`;
+                    gastoRow.dataset.rowType = "gasto-planeado";
+                    gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
+                    
+                    gastoHTML = `
+                        <div class="sticky left-0 z-5 flex items-center gap-2 bg-gray-100 pr-2">
+                            <input type="text" value="${concepto}" placeholder="Concepto..." readonly class="border-none text-gray-900 rounded-lg p-2 w-full focus:ring-0 text-base">
+                            <button class="confirm-gasto-btn text-green-500 hover:text-green-700 p-1 rounded-full transition-all" title="Confirmar pago">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                        </div>`;
+                    
+                    for (let i = 0; i < 5; i++) {
+                        const montoValor = montos[i] || ""; 
+                        const weekClass = (i === 4) ? 'week-5' : '';
+                        gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-pre" readonly class="monto-planeado border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right font-mono text-base ${weekClass}">`;
+                    }
+                } else {
+                    gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
+                    gastoRow.dataset.rowType = "gasto";
+                    gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
+
+                    gastoHTML = `
+                        <div class="sticky left-0 z-5 flex items-center gap-2 bg-white pr-2">
+                            <input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
+                            <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>`;
+                    
+                    for (let i = 0; i < 5; i++) {
+                        const montoValor = montos[i] || ""; 
+                        const weekClass = (i === 4) ? 'week-5' : '';
+                        gastoHTML += `<input type="number" value="${montoValor}" placeholder="0.00" step="0.01" data-name="gasto-input" readonly class="bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200 ${weekClass}">`;
+                    }
                 }
                 gastoRow.innerHTML = gastoHTML;
                 gridBody.appendChild(gastoRow);
             }
 
+            // --- NUEVO: calcularTotales modificado ---
             function calcularTotales() {
                 const numSemanas = 5; 
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
-                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]');
+                // SOLO contar filas "gasto", ignorar "gasto-planeado"
+                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]'); 
 
                 let totalesSueldo = new Array(numSemanas).fill(0);
                 let totalesGasto = new Array(numSemanas).fill(0);
@@ -745,6 +680,7 @@
                 sueldoInputs.forEach((input, index) => {
                     totalesSueldo[index] = parseFloat(input.value) || 0;
                 });
+                // La lógica de suma de gastos ahora es correcta, solo suma los confirmados
                 filasGastos.forEach(fila => {
                     const gastoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
                     gastoInputs.forEach((input, index) => {
@@ -757,10 +693,7 @@
 
                 const celdasTotalGasto = totalsGastosRow.querySelectorAll('div:not(:first-child)');
                 const celdasTotalRestante = totalsRestanteRow.querySelectorAll('div:not(:first-child)');
-
-                celdasTotalGasto.forEach((celda, index) => {
-                    celda.textContent = `$${totalesGasto[index].toFixed(2)}`;
-                });
+                celdasTotalGasto.forEach((celda, index) => { celda.textContent = `$${totalesGasto[index].toFixed(2)}`; });
                 celdasTotalRestante.forEach((celda, index) => {
                     celda.textContent = `$${totalesRestante[index].toFixed(2)}`;
                     celda.classList.toggle('text-green-600', totalesRestante[index] >= 0);
@@ -774,29 +707,34 @@
                 saveTimeout = setTimeout(guardarDatos, 1500);
             }
 
+            // --- NUEVO: guardarDatos modificado ---
             async function guardarDatos() {
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
                 const docId = `${AÑO_ACTUAL}-${String(mesIndex).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId);
-
                 const sueldoData = Array.from(sueldoRow.querySelectorAll('[data-name="sueldo-input"]')).map(input => input.value);
 
                 const gastosData = [];
+                // Guardar filas de GASTO
                 gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(fila => {
-                    const conceptoInput = fila.querySelector('input[type="text"]');
-                    const montos = Array.from(fila.querySelectorAll('[data-name="gasto-input"]')).map(input => input.value);
-                    const detalles = JSON.parse(fila.dataset.detalles || '["","","","",""]');
-                    
-                    if (conceptoInput.value || montos.some(m => m)) {
-                        gastosData.push({
-                            concepto: conceptoInput.value,
-                            montos: montos,
-                            detalles: detalles 
-                        });
-                    }
+                    gastosData.push({
+                        concepto: fila.querySelector('input[type="text"]').value,
+                        montos: Array.from(fila.querySelectorAll('[data-name="gasto-input"]')).map(input => input.value),
+                        detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
+                        esPlaneado: false
+                    });
                 });
-
+                // Guardar filas de GASTO-PLANEADO
+                gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(fila => {
+                    gastosData.push({
+                        concepto: fila.querySelector('input[type="text"]').value,
+                        montos: Array.from(fila.querySelectorAll('[data-name="gasto-pre"]')).map(input => input.value),
+                        detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
+                        esPlaneado: true
+                    });
+                });
+                
                 const dataPayload = { sueldo: sueldoData, gastos: gastosData };
                 try {
                     await setDoc(docRef, dataPayload); 
@@ -817,8 +755,10 @@
                 }
                 return total;
             }
-
             function openItemModal(input) {
+                // Solo abrir si no es un gasto planeado
+                if (input.dataset.name === 'gasto-pre') return; 
+                
                 currentModalInput = input;
                 const row = input.closest('[data-row-type="gasto"]');
                 const concepto = row.querySelector('input[type="text"]').value || "Gasto";
@@ -844,7 +784,6 @@
                     }
                     cajaSaldoEl.textContent = `$${saldoActualGlobal.toFixed(2)}`;
                 });
-
                 const logQuery = query(cajaLogColRef, orderBy("fecha", "desc"), limit(10));
                 onSnapshot(logQuery, (snapshot) => {
                     cajaLogEl.innerHTML = ""; 
@@ -854,24 +793,19 @@
                     }
                     snapshot.docs.forEach(doc => {
                         const data = doc.data();
-                        const monto = data.monto.toFixed(2);
-                        const tipo = data.tipo;
-                        const fecha = data.fecha ? data.fecha.toDate().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '...';
                         const li = document.createElement('li');
                         li.innerHTML = `
                             <div>
-                                <p class="log-concepto">${data.concepto || tipo}</p>
-                                <p class="log-fecha">${fecha}</p>
+                                <p class="log-concepto">${data.concepto || data.tipo}</p>
+                                <p class="log-fecha">${data.fecha ? data.fecha.toDate().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '...'}</p>
                             </div>
-                            <span class="log-monto ${tipo} font-bold font-mono">
-                                ${tipo === 'deposito' ? '+' : '-'}$${monto}
-                            </span>
-                        `;
+                            <span class="log-monto ${data.tipo} font-bold font-mono">
+                                ${data.tipo === 'deposito' ? '+' : '-'}$${data.monto.toFixed(2)}
+                            </span>`;
                         cajaLogEl.appendChild(li);
                     });
                 });
             }
-
             function openCajaModal(tipo) {
                 tipoMovimientoActual = tipo;
                 cajaModal.classList.remove('hidden');
@@ -888,7 +822,6 @@
                 }
                 cajaModalMonto.focus();
             }
-
             async function handleCajaSave() {
                 const monto = parseFloat(cajaModalMonto.value) || 0;
                 let concepto = cajaModalConcepto.value || (tipoMovimientoActual === 'deposito' ? 'Depósito' : 'Retiro');
@@ -916,10 +849,7 @@
                         transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
                         const newLogRef = doc(cajaLogColRef); 
                         transaction.set(newLogRef, {
-                            tipo: tipoMovimientoActual,
-                            monto: monto,
-                            concepto: concepto,
-                            fecha: serverTimestamp() 
+                            tipo: tipoMovimientoActual, monto: monto, concepto: concepto, fecha: serverTimestamp() 
                         });
                     });
                     cajaModal.classList.add('hidden');
@@ -936,42 +866,35 @@
             async function cargarResumenAnual() {
                 summaryList.innerHTML = '<li class="text-center text-gray-500 py-8">Calculando resumen...</li>';
                 summaryCategoryList.innerHTML = '<li class="text-center text-gray-500 py-4">Calculando...</li>';
-                
-                const q = query(registrosColRef, 
-                    where(documentId(), '>=', `${AÑO_ACTUAL}-00`), 
-                    where(documentId(), '<=', `${AÑO_ACTUAL}-11`)
-                );
-                
+                const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
                 let granTotalNeto = 0, granTotalSueldo = 0, granTotalGasto = 0;
                 let gastosPorConcepto = {}; 
                 let mesesData = new Array(12).fill(null);
-
                 try {
                     const querySnapshot = await getDocs(q);
                     querySnapshot.forEach(doc => {
                         const mesIndex = parseInt(doc.id.split('-')[1], 10);
                         const data = doc.data();
                         const totalSueldoMes = data.sueldo.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
-                        
                         let totalGastoMes = 0;
                         data.gastos.forEach(gasto => {
-                            const concepto = gasto.concepto.trim();
-                            const totalGastoConcepto = gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
-                            totalGastoMes += totalGastoConcepto;
-                            if (concepto && totalGastoConcepto > 0) {
-                                const conceptoKey = concepto.toLowerCase();
-                                gastosPorConcepto[conceptoKey] = (gastosPorConcepto[conceptoKey] || 0) + totalGastoConcepto;
+                            // SOLO sumar si NO es planeado
+                            if (!gasto.esPlaneado) {
+                                const concepto = gasto.concepto.trim();
+                                const totalGastoConcepto = gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
+                                totalGastoMes += totalGastoConcepto;
+                                if (concepto && totalGastoConcepto > 0) {
+                                    const conceptoKey = concepto.toLowerCase();
+                                    gastosPorConcepto[conceptoKey] = (gastosPorConcepto[conceptoKey] || 0) + totalGastoConcepto;
+                                }
                             }
                         });
-                        
                         const totalNetoMes = totalSueldoMes - totalGastoMes;
                         granTotalNeto += totalNetoMes;
                         granTotalSueldo += totalSueldoMes;
                         granTotalGasto += totalGastoMes;
-
                         mesesData[mesIndex] = { totalSueldoMes, totalGastoMes, totalNetoMes };
                     });
-
                     // --- Renderizar Resumen Mensual (LISTA) ---
                     summaryList.innerHTML = ""; 
                     MESES.forEach((mesNombre, index) => {
@@ -1000,18 +923,15 @@
                         }
                         summaryList.appendChild(li);
                     });
-
                     // --- Renderizar Totales Anuales ---
                     summaryTotalNeto.textContent = `${granTotalNeto >= 0 ? '+' : ''}$${granTotalNeto.toFixed(2)}`;
                     summaryTotalNeto.classList.toggle('text-green-400', granTotalNeto >= 0);
                     summaryTotalNeto.classList.toggle('text-red-400', granTotalNeto < 0);
                     summaryTotalGanado.textContent = `$${granTotalSueldo.toFixed(2)}`;
                     summaryTotalGastado.textContent = `-$${granTotalGasto.toFixed(2)}`;
-                    
                     // --- Renderizar Gastos por Concepto (LISTA) ---
                     summaryCategoryList.innerHTML = "";
                     const sortedGastos = Object.entries(gastosPorConcepto).sort((a, b) => b[1] - a[1]);
-                    
                     if (sortedGastos.length === 0) {
                         summaryCategoryList.innerHTML = '<li class="text-center text-gray-500">No hay gastos con concepto.</li>';
                     } else {
@@ -1024,90 +944,47 @@
                             summaryCategoryList.appendChild(li);
                         });
                     }
-                    
-                    // --- NUEVO: Renderizar Gráfica ---
+                    // --- Renderizar Gráfica ---
                     const chartLabels = sortedGastos.map(item => item[0]);
                     const chartData = sortedGastos.map(item => item[1]);
                     dibujarGrafica(chartLabels, chartData);
-
                 } catch (e) {
                     console.error("Error cargando resumen anual: ", e);
                     summaryList.innerHTML = `<li class="text-center text-red-500 py-8">Error al cargar resumen: ${e.message}</li>`;
                     summaryCategoryList.innerHTML = `<li class="text-center text-red-500 py-4">Error</li>`;
                 }
             }
-            
             function dibujarGrafica(labels, data) {
                 const ctx = chartCanvas.getContext('2d');
-                if (gastosChartInstance) {
-                    gastosChartInstance.destroy(); // Destruir gráfica anterior
-                }
-                // Colores para la gráfica
-                const bgColors = [
-                    '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E',
-                    '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
-                    '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E'
-                ];
-                
+                if (gastosChartInstance) { gastosChartInstance.destroy(); }
+                const bgColors = ['#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E'];
                 gastosChartInstance = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)), // Capitalizar
-                        datasets: [{
-                            label: 'Gastos por Concepto',
-                            data: data,
-                            backgroundColor: bgColors.slice(0, data.length),
-                            hoverOffset: 4
-                        }]
+                        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                        datasets: [{ label: 'Gastos por Concepto', data: data, backgroundColor: bgColors.slice(0, data.length), hoverOffset: 4 }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 15,
-                                    boxWidth: 12,
-                                    font: {
-                                        size: 14
-                                    }
-                                }
-                            }
-                        }
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12, font: { size: 14 } } } }
                     }
                 });
             }
             
-            // --- NUEVO: LÓGICA DE AJUSTES (GASTOS FIJOS) ---
+            // --- LÓGICA DE AJUSTES (GASTOS FIJOS) ---
             function iniciarListenersAjustes() {
-                // Listener para el form
                 gastoFijoForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const concepto = gastoFijoConcepto.value;
                     const monto = parseFloat(gastoFijoMonto.value);
                     const dia = parseInt(gastoFijoDia.value);
-
-                    if (!concepto || !monto || !dia) {
-                        alert("Por favor completa todos los campos.");
-                        return;
-                    }
-
+                    if (!concepto || !monto || !dia) { alert("Por favor completa todos los campos."); return; }
                     try {
-                        const newDocRef = doc(gastosFijosColRef); // Auto-generar ID
-                        await setDoc(newDocRef, {
-                            concepto: concepto,
-                            monto: monto,
-                            dia: dia
-                        });
-                        gastoFijoForm.reset(); // Limpiar formulario
-                    } catch (e) {
-                        console.error("Error agregando gasto fijo:", e);
-                        alert("Error al guardar el gasto.");
-                    }
+                        const newDocRef = doc(gastosFijosColRef);
+                        await setDoc(newDocRef, { concepto: concepto, monto: monto, dia: dia });
+                        gastoFijoForm.reset();
+                    } catch (e) { console.error("Error agregando gasto fijo:", e); alert("Error al guardar el gasto."); }
                 });
-
-                // Listener para la lista
                 onSnapshot(query(gastosFijosColRef, orderBy("dia")), (snapshot) => {
                     gastosFijosLista.innerHTML = "";
                     if (snapshot.empty) {
@@ -1127,8 +1004,7 @@
                                 <button class="delete-gasto-fijo-btn text-red-400 hover:text-red-600" data-id="${doc.id}">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
-                            </div>
-                        `;
+                            </div>`;
                         gastosFijosLista.appendChild(li);
                     });
                 });
@@ -1159,6 +1035,36 @@
                     triggerSave();
                     return; 
                 }
+                
+                // --- NUEVO: Listener para confirmar gasto ---
+                const confirmBtn = e.target.closest('.confirm-gasto-btn');
+                if (confirmBtn) {
+                    const row = confirmBtn.closest('[data-row-type="gasto-planeado"]');
+                    row.dataset.rowType = "gasto"; // Cambia tipo
+                    row.classList.remove('gasto-planeado'); // Quita estilo gris
+                    // Cambia concepto
+                    const conceptoInput = row.querySelector('input[type="text"]');
+                    conceptoInput.readOnly = false;
+                    conceptoInput.className = "bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base";
+                    // Cambia botón
+                    const btnContainer = confirmBtn.parentElement;
+                    btnContainer.innerHTML = `
+                        <input type="text" value="${conceptoInput.value}" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
+                        <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>`;
+                    // Cambia inputs de monto
+                    row.querySelectorAll('[data-name="gasto-pre"]').forEach(input => {
+                        input.dataset.name = "gasto-input";
+                        input.readOnly = true;
+                        input.className = "bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200";
+                    });
+                    
+                    calcularTotales();
+                    triggerSave();
+                    return;
+                }
+                
                 const gastoInput = e.target.closest('[data-name="gasto-input"]');
                 if (gastoInput) { openItemModal(gastoInput); }
             });
@@ -1218,7 +1124,8 @@
                 const deleteBtn = e.target.closest('.delete-gasto-fijo-btn');
                 if (deleteBtn) {
                     const docId = deleteBtn.dataset.id;
-                    if (confirm("¿Seguro que quieres borrar este gasto fijo?")) {
+                    // REEMPLAZO DE CONFIRM
+                    if (window.confirm("¿Seguro que quieres borrar este gasto fijo?")) {
                         try {
                             await deleteDoc(doc(gastosFijosColRef, docId));
                         } catch (e) {

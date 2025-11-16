@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Control de Gastos (Splash Pro)</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#10B981">
 
 <!-- iOS support -->
@@ -1550,7 +1550,7 @@
 if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
             navigator.serviceWorker
-                .register("/sw.js")
+                .register("sw.js")
                 .then(() => console.log("Service Worker registrado"))
                 .catch(err => console.log("Error SW:", err));
         });

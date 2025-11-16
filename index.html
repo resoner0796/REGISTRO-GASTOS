@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Resumen PRO)</title>
+    <title>Control de Gastos (Nativo v1)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -19,6 +19,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            /* Evita que el body "rebote" en iOS */
+            overscroll-behavior: none;
         }
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
@@ -74,43 +76,21 @@
         #summary-list .summary-item:last-child {
             border-bottom: none;
         }
+        
+        /* Estilos para Tab Bar Activa */
+        .tab-button.active {
+            color: #2563eb; /* text-blue-600 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen antialiased">
 
     <!-- Contenedor principal de la App -->
-    <div id="app-container" class="container mx-auto max-w-6xl p-4 md:p-8">
+    <!-- NUEVO: Padding inferior para dejar espacio a la Tab Bar -->
+    <div id="app-container" class="container mx-auto max-w-6xl p-4 md:p-8 pb-24">
 
-        <!-- VISTA: Menú Principal -->
-        <div id="main-menu" class="flex flex-col items-center justify-center min-h-[80vh]">
-            <div class="bg-white p-8 md:p-12 rounded-2xl shadow-2xl text-center w-full max-w-md">
-                <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                    Mi Control de Gastos
-                </h1>
-                <p class="text-lg text-gray-600 mb-10">
-                    Tu app de finanzas simple y al grano.
-                </p>
-                <button id="goToRegisterBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
-                    Registrar Gastos
-                </button>
-                <button id="goToSummaryBtn" class="mt-4 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg w-full">
-                    Resumen Anual
-                </button>
-            </div>
-        </div>
-
-        <!-- VISTA: Registro de Gastos (Oculta) -->
-        <div id="register-view" class="hidden">
-            <!-- Header: Botón de volver y Título -->
-            <div class="flex items-center mb-4">
-                <button id="backToMenuBtn" class="text-gray-500 hover:text-gray-900 text-3xl font-bold transition-all self-start p-2 -ml-2">
-                    &larr;
-                </button>
-                <h2 class="text-3xl font-bold text-gray-900 text-center flex-1 ml-4">
-                    Registro de Pagos
-                </h2>
-            </div>
-
+        <!-- VISTA: Registro de Gastos (Visible por defecto) -->
+        <div id="register-view" class="">
             <!-- SELECTOR DE MES (LOS COLORES SE APLICAN CON JS) -->
             <select id="month-select" class="w-full text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none cursor-pointer transition-colors duration-300">
                 <!-- Opciones de mes -->
@@ -153,55 +133,24 @@
                     <span id="save-status" class="text-sm text-gray-500 font-medium">Listo ✔</span>
                 </div>
             </div>
-
-            <!-- Panel de Caja de Ahorro -->
-            <div id="caja-ahorro-view" class="mt-8 bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div class="p-6">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Caja de Ahorro</h3>
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div class="text-center md:text-left">
-                            <p class="text-sm font-medium text-gray-500 uppercase">Saldo Actual</p>
-                            <p id="caja-saldo" class="text-4xl font-bold text-green-600">$0.00</p>
-                        </div>
-                        <div class="flex gap-3 justify-center">
-                            <button id="caja-retiro-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
-                                Retirar
-                            </button>
-                            <button id="caja-deposito-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
-                                Depositar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-6 border-t border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos</h4>
-                    <ul id="caja-log" class="space-y-2 max-h-48 overflow-y-auto">
-                        <li class="text-center text-gray-500 py-4">Cargando movimientos...</li>
-                    </ul>
-                </div>
-            </div>
         </div>
 
-        <!-- ****** VISTA RESUMEN ANUAL (MODIFICADA) ****** -->
+        <!-- VISTA RESUMEN ANUAL (Oculta) -->
         <div id="summary-view" class="hidden">
-            <!-- Header -->
-            <div class="flex items-center mb-4">
-                <button id="backToMenuFromSummaryBtn" class="text-gray-500 hover:text-gray-900 text-3xl font-bold transition-all self-start p-2 -ml-2">
-                    &larr;
-                </button>
-                <h2 class="text-3xl font-bold text-gray-900 text-center flex-1 ml-4">
+            <!-- Header Limpio -->
+            <div class="bg-white p-4 rounded-t-2xl shadow-lg">
+                <h2 class="text-3xl font-bold text-gray-900 text-center">
                     Resumen Anual
                 </h2>
             </div>
+            
             <!-- Cuerpo del Resumen -->
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
                 <!-- Total General -->
-                <div class="p-6 text-center bg-gray-800 text-white rounded-t-2xl">
-                    <!-- *** CAMBIO: Título *** -->
+                <div class="p-6 text-center bg-gray-800 text-white">
                     <p class="text-sm font-medium text-gray-300 uppercase">Balance Neto (Año)</p>
                     <p id="summary-total-neto" class="text-4xl font-bold">$0.00</p>
                     
-                    <!-- *** NUEVO: Totales Ganado/Gastado *** -->
                     <div class="flex justify-center gap-6 text-sm mt-4 text-gray-300">
                        <div>
                            <span class="font-medium">Total Ganado</span>
@@ -219,7 +168,7 @@
                     <li class="text-center text-gray-500 py-8">Cargando resumen...</li>
                 </ul>
                 
-                <!-- *** NUEVO: Sección Gastos por Concepto *** -->
+                <!-- Sección Gastos por Concepto -->
                 <div class="p-4 md:p-6 border-t border-gray-200">
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos por Concepto (Anual)</h3>
                     <ul id="summary-category-list" class="space-y-3 max-h-72 overflow-y-auto">
@@ -228,8 +177,64 @@
                 </div>
             </div>
         </div>
+        
+        <!-- NUEVO: VISTA CAJA DE AHORRO (Oculta) -->
+        <div id="caja-view" class="hidden">
+            <!-- Header Limpio -->
+            <div class="bg-white p-4 rounded-t-2xl shadow-lg">
+                <h2 class="text-3xl font-bold text-gray-900 text-center">
+                    Caja de Ahorro
+                </h2>
+            </div>
+            
+            <!-- Panel de Caja de Ahorro -->
+            <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
+                <div class="p-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div class="text-center md:text-left">
+                            <p class="text-sm font-medium text-gray-500 uppercase">Saldo Actual</p>
+                            <p id="caja-saldo" class="text-4xl font-bold text-green-600">$0.00</p>
+                        </div>
+                        <div class="flex gap-3 justify-center">
+                            <button id="caja-retiro-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                                Retirar
+                            </button>
+                            <button id="caja-deposito-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                                Depositar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-6 border-t border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos</h4>
+                    <ul id="caja-log" class="space-y-2 max-h-[50vh] overflow-y-auto">
+                        <li class="text-center text-gray-500 py-4">Cargando movimientos...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
     </div> <!-- Fin App Container -->
+
+    <!-- ****** NUEVO: TAB BAR FIJA ****** -->
+    <nav class="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 shadow-t-lg z-50 flex justify-around">
+        <!-- Tab 1: Registro -->
+        <button id="tab-registro" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-blue-600 active" data-view="register-view">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            <span class="text-xs font-medium">Registro</span>
+        </button>
+        <!-- Tab 2: Resumen -->
+        <button id="tab-resumen" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="summary-view">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-xs font-medium">Resumen</span>
+        </button>
+        <!-- Tab 3: Caja -->
+        <button id="tab-caja" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="caja-view">
+             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <span class="text-xs font-medium">Caja</span>
+        </button>
+    </nav>
+
 
     <!-- MODAL 1: GASTOS DETALLADOS -->
     <div id="item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -351,13 +356,17 @@
         // --- TODA LA LÓGICA DE LA APP ---
         function initializeAppLogic() {
             // --- SELECCIÓN DE ELEMENTOS DEL DOM (GENERAL) ---
-            const mainMenu = document.getElementById('main-menu');
+            // Vistas principales
             const registerView = document.getElementById('register-view');
             const summaryView = document.getElementById('summary-view'); 
-            const goToRegisterBtn = document.getElementById('goToRegisterBtn');
-            const goToSummaryBtn = document.getElementById('goToSummaryBtn'); 
-            const backToMenuBtn = document.getElementById('backToMenuBtn');
-            const backToMenuFromSummaryBtn = document.getElementById('backToMenuFromSummaryBtn'); 
+            const cajaView = document.getElementById('caja-view'); // Nueva vista
+            const views = [registerView, summaryView, cajaView];
+
+            // Tab Bar
+            const tabRegistro = document.getElementById('tab-registro');
+            const tabResumen = document.getElementById('tab-resumen');
+            const tabCaja = document.getElementById('tab-caja');
+            const tabButtons = [tabRegistro, tabResumen, tabCaja];
             
             // --- DOM (GRID) ---
             const monthSelect = document.getElementById('month-select');
@@ -397,7 +406,6 @@
             // --- DOM (Resumen Anual) ---
             const summaryList = document.getElementById('summary-list');
             const summaryTotalNeto = document.getElementById('summary-total-neto');
-            // *** NUEVO: Refs a totales ***
             const summaryTotalGanado = document.getElementById('summary-total-ganado');
             const summaryTotalGastado = document.getElementById('summary-total-gastado');
             const summaryCategoryList = document.getElementById('summary-category-list');
@@ -429,31 +437,37 @@
 
             let saveTimeout; 
 
-            // --- LÓGICA DE NAVEGACIÓN ---
-            goToRegisterBtn.addEventListener('click', () => {
-                mainMenu.classList.add('hidden');
-                summaryView.classList.add('hidden');
-                registerView.classList.remove('hidden');
-            });
+            // --- LÓGICA DE NAVEGACIÓN (TAB BAR) ---
+            function handleTabClick(e) {
+                const clickedButton = e.currentTarget;
+                const viewId = clickedButton.dataset.view;
+
+                // 1. Ocultar todas las vistas
+                views.forEach(view => view.classList.add('hidden'));
+                
+                // 2. Mostrar la vista seleccionada
+                const viewToShow = document.getElementById(viewId);
+                viewToShow.classList.remove('hidden');
+
+                // 3. Actualizar estilos de botones
+                tabButtons.forEach(button => {
+                    button.classList.remove('active', 'text-blue-600');
+                    button.classList.add('text-gray-500');
+                });
+                clickedButton.classList.add('active', 'text-blue-600');
+                clickedButton.classList.remove('text-gray-500');
+
+                // 4. Cargar datos si es necesario
+                if (viewId === 'summary-view') {
+                    cargarResumenAnual();
+                }
+                
+                // Regresar al topo de la página
+                window.scrollTo(0, 0);
+            }
             
-            goToSummaryBtn.addEventListener('click', () => {
-                mainMenu.classList.add('hidden');
-                registerView.classList.add('hidden');
-                summaryView.classList.remove('hidden');
-                cargarResumenAnual(); // Cargar datos al entrar
-            });
+            tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
 
-            backToMenuBtn.addEventListener('click', () => {
-                registerView.classList.add('hidden');
-                summaryView.classList.add('hidden');
-                mainMenu.classList.remove('hidden');
-            });
-
-            backToMenuFromSummaryBtn.addEventListener('click', () => {
-                registerView.classList.add('hidden');
-                summaryView.classList.add('hidden');
-                mainMenu.classList.remove('hidden');
-            });
 
             // --- LÓGICA PRINCIPAL DEL REGISTRO (GRID) ---
 
@@ -804,7 +818,7 @@
                 cajaModalSaveBtn.textContent = "Confirmar";
             }
 
-            // --- ****** LÓGICA RESUMEN ANUAL (MODIFICADA) ****** ---
+            // --- LÓGICA RESUMEN ANUAL (MODIFICADA) ---
 
             async function cargarResumenAnual() {
                 summaryList.innerHTML = '<li class="text-center text-gray-500 py-8">Calculando resumen...</li>';
@@ -816,9 +830,9 @@
                 );
                 
                 let granTotalNeto = 0;
-                let granTotalSueldo = 0; // Nuevo
-                let granTotalGasto = 0;  // Nuevo
-                let gastosPorConcepto = {}; // Nuevo
+                let granTotalSueldo = 0; 
+                let granTotalGasto = 0;  
+                let gastosPorConcepto = {}; 
                 let mesesData = new Array(12).fill(null);
 
                 try {

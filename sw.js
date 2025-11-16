@@ -2,9 +2,9 @@ const CACHE_NAME = "gastos-v1";
 const URLS_TO_CACHE = [
     "/",
     "/index.html",
-    "/manifest.json",
-    "/icon-192.PNG",
-    "/icon-512.PNG"
+    "manifest.json",
+    "icon-192.PNG",
+    "icon-512.PNG"
 ];
 
 // INSTALACIÓN (cache inicial)

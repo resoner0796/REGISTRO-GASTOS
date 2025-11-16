@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Confirmar Pagos)</title>
+    <title>Control de Gastos (Bugs Corregidos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -55,7 +55,7 @@
             background-color: #ffffff; color: #111827;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
         }
-        /* NUEVO: Estilos para fila planeada */
+        /* Estilos para fila planeada */
         .gasto-planeado {
             background-color: #f3f4f6; /* gray-100 */
             opacity: 0.8;
@@ -146,7 +146,6 @@
                     <div class="p-6 text-center bg-gray-800 text-white">
                         <p class="text-sm font-medium text-gray-300 uppercase">Balance Neto (Año)</p>
                         <p id="summary-total-neto" class="text-4xl font-bold">$0.00</p>
-                        
                         <div class="flex justify-center gap-6 text-sm mt-4 text-gray-300">
                            <div>
                                <span class="font-medium">Total Ganado</span>
@@ -158,12 +157,10 @@
                            </div>
                         </div>
                     </div>
-                    
                     <!-- Lista de Meses -->
                     <ul id="summary-list" class="p-4 md:p-6">
                         <li class="text-center text-gray-500 py-8">Cargando resumen...</li>
                     </ul>
-                    
                     <!-- Sección Gastos por Concepto -->
                     <div class="p-4 md:p-6 border-t border-gray-200">
                         <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos por Concepto (Anual)</h3>
@@ -172,7 +169,6 @@
                         </ul>
                     </div>
                 </div>
-                
                 <!-- VISTA 2: Gráfica (Oculta) -->
                 <div id="summary-grafica-view" class="hidden p-4 md:p-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-4 text-center">Gastos por Concepto</h3>
@@ -191,7 +187,6 @@
                     Caja de Ahorro
                 </h2>
             </div>
-            
             <!-- Panel de Caja de Ahorro -->
             <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
                 <div class="p-6">
@@ -227,7 +222,6 @@
                     Ajustes
                 </h2>
             </div>
-            
             <!-- Panel de Gastos Fijos -->
             <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
                 <div class="p-6">
@@ -481,7 +475,7 @@
                 clickedButton.classList.add('active', 'text-blue-600');
                 clickedButton.classList.remove('text-gray-500');
                 if (viewId === 'summary-view') { cargarResumenAnual(); }
-                if (viewId === 'ajustes-view') { iniciarListenersAjustes(); }
+                // BUG 3 (TRIPLE REGISTRO) FIX: El listener de Ajustes ya no se llama aquí.
                 window.scrollTo(0, 0);
             }
             tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
@@ -520,6 +514,7 @@
                 return `${dia}-${mes}`;
             }
 
+            // --- FUNCIÓN dibujarGrid MODIFICADA (FIX BUG 1) ---
             async function dibujarGrid(mesIndex) {
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
@@ -529,98 +524,111 @@
                 gridWrapper.dataset.weeks = numSemanas;
                 const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId); 
-                let docData = null;
-                let docExiste = false;
+                
+                let docData = { sueldo: [], gastos: [] };
+                
                 try {
+                    // 1. Cargar datos guardados (si existen)
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
                         docData = docSnap.data();
-                        docExiste = true;
-                    } else {
-                        docData = await precargarGastosFijos(thursdays);
+                        // Asegurarse de que los arrays existan
+                        if (!docData.sueldo) docData.sueldo = [];
+                        if (!docData.gastos) docData.gastos = [];
                     }
+
+                    // 2. Cargar gastos fijos (SIEMPRE)
+                    const gastosFijosSnap = await getDocs(gastosFijosColRef);
+                    const conceptosExistentes = docData.gastos.map(g => g.concepto.toLowerCase());
+
+                    let seAgregaronNuevosGastosFijos = false;
+                    
+                    gastosFijosSnap.forEach(doc => {
+                        const gastoFijo = doc.data();
+                        const conceptoFijo = gastoFijo.concepto;
+                        
+                        // 3. Comparar: Si un gasto fijo NO está en los datos guardados, agregarlo
+                        if (!conceptosExistentes.includes(conceptoFijo.toLowerCase())) {
+                            const dia = gastoFijo.dia;
+                            let weekIndex = -1;
+                            for (let i = 0; i < thursdays.length; i++) {
+                                const diaJueves = thursdays[i].getDate();
+                                const diaLimite = (i === 0) ? 1 : thursdays[i-1].getDate() + 1;
+                                if (dia >= diaLimite && dia <= diaJueves) { weekIndex = i; break; }
+                            }
+                            if (weekIndex === -1) { weekIndex = thursdays.length - 1; }
+                            
+                            let montos = ["", "", "", "", ""];
+                            montos[weekIndex] = gastoFijo.monto;
+                            
+                            docData.gastos.push({
+                                concepto: conceptoFijo,
+                                montos: montos,
+                                detalles: ["", "", "", "", ""],
+                                esPlaneado: true // Se agrega como "planeado"
+                            });
+                            seAgregaronNuevosGastosFijos = true;
+                        }
+                    });
+                    
+                    // 4. Dibujar Encabezado
+                    let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
+                    for (let i = 0; i < 5; i++) {
+                        const date = thursdays[i];
+                        const label = date ? formatDate(date) : "---";
+                        const weekClass = (i === 4) ? 'week-5' : '';
+                        headerHTML += `<div class="text-center p-2 ${weekClass}">${label}</div>`;
+                    }
+                    gridHeader.innerHTML = headerHTML;
+                    
+                    // 5. Dibujar Cuerpo
+                    gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(gasto => gasto.remove());
+                    gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(gasto => gasto.remove());
+                    
+                    sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
+                    let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
+                    for (let i = 0; i < 5; i++) {
+                        const sueldoValor = docData?.sueldo?.[i] || ""; 
+                        const weekClass = (i === 4) ? 'week-5' : '';
+                        sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold text-base ${weekClass}">`;
+                    }
+                    sueldoRow.innerHTML = sueldoHTML;
+                    
+                    if (docData && docData.gastos && docData.gastos.length > 0) {
+                        docData.gastos.forEach(gasto => {
+                            agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles, gasto.esPlaneado);
+                        });
+                    }
+                    if (gridBody.querySelectorAll('[data-row-type]').length === 0) {
+                        agregarFilaDeGasto(); 
+                    }
+
+                    // 6. Dibujar Pie (Totales)
+                    let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
+                    let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
+                    for (let i = 0; i < 5; i++) {
+                        const weekClass = (i === 4) ? 'week-5' : '';
+                        totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded text-base ${weekClass}">$0.00</div>`;
+                        totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold text-base ${weekClass}">$0.00</div>`;
+                    }
+                    totalsGastosRow.innerHTML = totalGastoHTML;
+                    totalsRestanteRow.innerHTML = totalRestanteHTML;
+                    
+                    calcularTotales();
+                    saveStatusEl.textContent = "Listo ✔";
+                    
+                    // 7. Si se agregaron gastos, guardar
+                    if (seAgregaronNuevosGastosFijos) {
+                        triggerSave();
+                    }
+
                 } catch (e) {
                     console.error("Error cargando datos: ", e);
                     saveStatusEl.textContent = "Error al cargar ❌";
                 }
-                // 1. Dibujar Encabezado
-                let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
-                for (let i = 0; i < 5; i++) {
-                    const date = thursdays[i];
-                    const label = date ? formatDate(date) : "---";
-                    const weekClass = (i === 4) ? 'week-5' : '';
-                    headerHTML += `<div class="text-center p-2 ${weekClass}">${label}</div>`;
-                }
-                gridHeader.innerHTML = headerHTML;
-                // 2. Dibujar Cuerpo
-                gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(gasto => gasto.remove());
-                gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(gasto => gasto.remove()); // NUEVO
-                sueldoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg`;
-                let sueldoHTML = '<div class="font-semibold text-green-700 p-2 sticky left-0 z-5 bg-white">Sueldo</div>';
-                for (let i = 0; i < 5; i++) {
-                    const sueldoValor = docData?.sueldo?.[i] || ""; 
-                    const weekClass = (i === 4) ? 'week-5' : '';
-                    sueldoHTML += `<input type="number" value="${sueldoValor}" placeholder="0.00" step="0.01" data-name="sueldo-input" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono font-bold text-base ${weekClass}">`;
-                }
-                sueldoRow.innerHTML = sueldoHTML;
-                
-                if (docData && docData.gastos && docData.gastos.length > 0) {
-                    docData.gastos.forEach(gasto => {
-                        // NUEVO: Cargar gastos planeados o normales
-                        if (gasto.esPlaneado) {
-                            agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles, true);
-                        } else {
-                            agregarFilaDeGasto(gasto.concepto, gasto.montos, gasto.detalles, false);
-                        }
-                    });
-                }
-                if (gridBody.querySelectorAll('[data-row-type="gasto"]').length === 0 && gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').length === 0) {
-                    agregarFilaDeGasto(); 
-                }
-                // 3. Dibujar Pie (Totales)
-                let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
-                let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
-                for (let i = 0; i < 5; i++) {
-                    const weekClass = (i === 4) ? 'week-5' : '';
-                    totalGastoHTML += `<div class="text-center font-mono p-2 bg-blue-100 rounded text-base ${weekClass}">$0.00</div>`;
-                    totalRestanteHTML += `<div class="text-center font-mono p-2 bg-white border border-gray-200 rounded font-bold text-base ${weekClass}">$0.00</div>`;
-                }
-                totalsGastosRow.innerHTML = totalGastoHTML;
-                totalsRestanteRow.innerHTML = totalRestanteHTML;
-                calcularTotales();
-                saveStatusEl.textContent = "Listo ✔";
-                if (!docExiste) { triggerSave(); }
             }
             
-            async function precargarGastosFijos(thursdays) {
-                let gastosPrecargados = [];
-                try {
-                    const querySnapshot = await getDocs(gastosFijosColRef);
-                    querySnapshot.forEach(doc => {
-                        const gasto = doc.data();
-                        const dia = gasto.dia;
-                        let weekIndex = -1;
-                        for (let i = 0; i < thursdays.length; i++) {
-                            const diaJueves = thursdays[i].getDate();
-                            const diaLimite = (i === 0) ? 1 : thursdays[i-1].getDate() + 1;
-                            if (dia >= diaLimite && dia <= diaJueves) { weekIndex = i; break; }
-                        }
-                        if (weekIndex === -1) { weekIndex = thursdays.length - 1; }
-                        let montos = ["", "", "", "", ""];
-                        montos[weekIndex] = gasto.monto;
-                        
-                        gastosPrecargados.push({
-                            concepto: gasto.concepto,
-                            montos: montos,
-                            detalles: ["", "", "", "", ""],
-                            esPlaneado: true // NUEVO FLAG
-                        });
-                    });
-                } catch (e) { console.error("Error precargando gastos fijos:", e); }
-                return { sueldo: ["", "", "", "", ""], gastos: gastosPrecargados };
-            }
-
-            // --- NUEVO: Lógica de agregarFilaDeGasto modificada ---
+            // --- FUNCIÓN agregarFilaDeGasto MODIFICADA (FIX BUG 2) ---
             function agregarFilaDeGasto(concepto = "", montos = [], detalles = [], esPlaneado = false) {
                 const gastoRow = document.createElement('div');
                 let gastoHTML = '';
@@ -631,10 +639,15 @@
                     gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
                     
                     gastoHTML = `
-                        <div class="sticky left-0 z-5 flex items-center gap-2 bg-gray-100 pr-2">
+                        <div class="sticky left-0 z-5 flex items-center gap-1 bg-gray-100 pr-2">
                             <input type="text" value="${concepto}" placeholder="Concepto..." readonly class="border-none text-gray-900 rounded-lg p-2 w-full focus:ring-0 text-base">
+                            <!-- BOTÓN CONFIRMAR -->
                             <button class="confirm-gasto-btn text-green-500 hover:text-green-700 p-1 rounded-full transition-all" title="Confirmar pago">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                            <!-- NUEVO BOTÓN BORRAR (FIX BUG 2) -->
+                            <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all" title="Borrar recordatorio">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>`;
                     
@@ -666,21 +679,16 @@
                 gridBody.appendChild(gastoRow);
             }
 
-            // --- NUEVO: calcularTotales modificado ---
             function calcularTotales() {
                 const numSemanas = 5; 
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
-                // SOLO contar filas "gasto", ignorar "gasto-planeado"
-                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]'); 
-
+                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]'); // Solo contar gastos confirmados
                 let totalesSueldo = new Array(numSemanas).fill(0);
                 let totalesGasto = new Array(numSemanas).fill(0);
                 let totalesRestante = new Array(numSemanas).fill(0);
-
                 sueldoInputs.forEach((input, index) => {
                     totalesSueldo[index] = parseFloat(input.value) || 0;
                 });
-                // La lógica de suma de gastos ahora es correcta, solo suma los confirmados
                 filasGastos.forEach(fila => {
                     const gastoInputs = fila.querySelectorAll('[data-name="gasto-input"]');
                     gastoInputs.forEach((input, index) => {
@@ -690,7 +698,6 @@
                 for (let i = 0; i < 5; i++) {
                     totalesRestante[i] = totalesSueldo[i] - totalesGasto[i];
                 }
-
                 const celdasTotalGasto = totalsGastosRow.querySelectorAll('div:not(:first-child)');
                 const celdasTotalRestante = totalsRestanteRow.querySelectorAll('div:not(:first-child)');
                 celdasTotalGasto.forEach((celda, index) => { celda.textContent = `$${totalesGasto[index].toFixed(2)}`; });
@@ -707,34 +714,39 @@
                 saveTimeout = setTimeout(guardarDatos, 1500);
             }
 
-            // --- NUEVO: guardarDatos modificado ---
             async function guardarDatos() {
                 saveStatusEl.textContent = "Guardando...";
                 const mesIndex = monthSelect.value;
                 const docId = `${AÑO_ACTUAL}-${String(mesIndex).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId);
                 const sueldoData = Array.from(sueldoRow.querySelectorAll('[data-name="sueldo-input"]')).map(input => input.value);
-
                 const gastosData = [];
                 // Guardar filas de GASTO
                 gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(fila => {
-                    gastosData.push({
-                        concepto: fila.querySelector('input[type="text"]').value,
-                        montos: Array.from(fila.querySelectorAll('[data-name="gasto-input"]')).map(input => input.value),
-                        detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
-                        esPlaneado: false
-                    });
+                    const concepto = fila.querySelector('input[type="text"]').value;
+                    const montos = Array.from(fila.querySelectorAll('[data-name="gasto-input"]')).map(input => input.value);
+                    if (concepto || montos.some(m => m)) {
+                        gastosData.push({
+                            concepto: concepto,
+                            montos: montos,
+                            detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
+                            esPlaneado: false
+                        });
+                    }
                 });
                 // Guardar filas de GASTO-PLANEADO
                 gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(fila => {
-                    gastosData.push({
-                        concepto: fila.querySelector('input[type="text"]').value,
-                        montos: Array.from(fila.querySelectorAll('[data-name="gasto-pre"]')).map(input => input.value),
-                        detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
-                        esPlaneado: true
-                    });
+                    const concepto = fila.querySelector('input[type="text"]').value;
+                    const montos = Array.from(fila.querySelectorAll('[data-name="gasto-pre"]')).map(input => input.value);
+                    if (concepto || montos.some(m => m)) {
+                        gastosData.push({
+                            concepto: concepto,
+                            montos: montos,
+                            detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
+                            esPlaneado: true
+                        });
+                    }
                 });
-                
                 const dataPayload = { sueldo: sueldoData, gastos: gastosData };
                 try {
                     await setDoc(docRef, dataPayload); 
@@ -756,9 +768,7 @@
                 return total;
             }
             function openItemModal(input) {
-                // Solo abrir si no es un gasto planeado
                 if (input.dataset.name === 'gasto-pre') return; 
-                
                 currentModalInput = input;
                 const row = input.closest('[data-row-type="gasto"]');
                 const concepto = row.querySelector('input[type="text"]').value || "Gasto";
@@ -838,7 +848,7 @@
                 try {
                     await runTransaction(db, async (transaction) => {
                         const cajaDoc = await transaction.get(cajaDocRef);
-                        const saldoPrevio = cajaDoc.data().saldoActual || 0;
+                        const saldoPrevio = cajaDoc.data()?.saldoActual || 0;
                         let nuevoSaldo;
                         if (tipoMovimientoActual === 'deposito') {
                             nuevoSaldo = saldoPrevio + monto;
@@ -846,7 +856,11 @@
                             if (saldoPrevio < monto) throw new Error("Fondos insuficientes");
                             nuevoSaldo = saldoPrevio - monto;
                         }
-                        transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
+                        if (cajaDoc.exists()) {
+                            transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
+                        } else {
+                            transaction.set(cajaDocRef, { saldoActual: nuevoSaldo });
+                        }
                         const newLogRef = doc(cajaLogColRef); 
                         transaction.set(newLogRef, {
                             tipo: tipoMovimientoActual, monto: monto, concepto: concepto, fecha: serverTimestamp() 
@@ -875,13 +889,12 @@
                     querySnapshot.forEach(doc => {
                         const mesIndex = parseInt(doc.id.split('-')[1], 10);
                         const data = doc.data();
-                        const totalSueldoMes = data.sueldo.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+                        const totalSueldoMes = (data.sueldo || []).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
                         let totalGastoMes = 0;
-                        data.gastos.forEach(gasto => {
-                            // SOLO sumar si NO es planeado
+                        (data.gastos || []).forEach(gasto => {
                             if (!gasto.esPlaneado) {
                                 const concepto = gasto.concepto.trim();
-                                const totalGastoConcepto = gasto.montos.reduce((a, m) => a + (parseFloat(m) || 0), 0);
+                                const totalGastoConcepto = (gasto.montos || []).reduce((a, m) => a + (parseFloat(m) || 0), 0);
                                 totalGastoMes += totalGastoConcepto;
                                 if (concepto && totalGastoConcepto > 0) {
                                     const conceptoKey = concepto.toLowerCase();
@@ -973,6 +986,7 @@
             
             // --- LÓGICA DE AJUSTES (GASTOS FIJOS) ---
             function iniciarListenersAjustes() {
+                // BUG 3 (TRIPLE REGISTRO) FIX: Este listener ahora solo se añade UNA VEZ
                 gastoFijoForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const concepto = gastoFijoConcepto.value;
@@ -985,6 +999,8 @@
                         gastoFijoForm.reset();
                     } catch (e) { console.error("Error agregando gasto fijo:", e); alert("Error al guardar el gasto."); }
                 });
+                
+                // Este listener también se añade solo UNA VEZ
                 onSnapshot(query(gastosFijosColRef, orderBy("dia")), (snapshot) => {
                     gastosFijosLista.innerHTML = "";
                     if (snapshot.empty) {
@@ -1014,6 +1030,7 @@
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
             iniciarListenersCaja(); 
+            iniciarListenersAjustes(); // BUG 3 (TRIPLE REGISTRO) FIX: Llamar aquí UNA SOLA VEZ
 
             // --- EVENT LISTENERS (GRID) ---
             monthSelect.addEventListener('change', (e) => dibujarGrid(e.target.value));
@@ -1027,16 +1044,23 @@
                     triggerSave();    
                 }
             });
+            
+            // --- Listener de Clicks en Grid MODIFICADO (FIX BUG 2) ---
             gridBody.addEventListener('click', (e) => {
+                // Listener para Borrar (ambos tipos de fila)
                 const deleteBtn = e.target.closest('.delete-gasto-btn');
                 if (deleteBtn) {
-                    deleteBtn.closest('[data-row-type="gasto"]').remove();
-                    calcularTotales();
-                    triggerSave();
+                    // FIX: .closest('[data-row-type]') selecciona CUALQUIER fila (planeada o no)
+                    const row = deleteBtn.closest('[data-row-type]'); 
+                    if (row) {
+                        row.remove();
+                        calcularTotales();
+                        triggerSave();
+                    }
                     return; 
                 }
                 
-                // --- NUEVO: Listener para confirmar gasto ---
+                // Listener para Confirmar Gasto
                 const confirmBtn = e.target.closest('.confirm-gasto-btn');
                 if (confirmBtn) {
                     const row = confirmBtn.closest('[data-row-type="gasto-planeado"]');
@@ -1044,8 +1068,6 @@
                     row.classList.remove('gasto-planeado'); // Quita estilo gris
                     // Cambia concepto
                     const conceptoInput = row.querySelector('input[type="text"]');
-                    conceptoInput.readOnly = false;
-                    conceptoInput.className = "bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base";
                     // Cambia botón
                     const btnContainer = confirmBtn.parentElement;
                     btnContainer.innerHTML = `
@@ -1065,6 +1087,7 @@
                     return;
                 }
                 
+                // Listener para abrir Modal
                 const gastoInput = e.target.closest('[data-name="gasto-input"]');
                 if (gastoInput) { openItemModal(gastoInput); }
             });
@@ -1128,6 +1151,8 @@
                     if (window.confirm("¿Seguro que quieres borrar este gasto fijo?")) {
                         try {
                             await deleteDoc(doc(gastosFijosColRef, docId));
+                            // Borrarlo de los meses ya cargados (si está como planeado)
+                            await actualizarMesesAbiertos(deleteBtn.closest('li').querySelector('.log-concepto').textContent.trim());
                         } catch (e) {
                             console.error("Error borrando gasto fijo:", e);
                             alert("No se pudo borrar el gasto.");
@@ -1135,6 +1160,42 @@
                     }
                 }
             });
+
+            // --- NUEVA FUNCIÓN: Borrar gasto planeado de meses abiertos ---
+            async function actualizarMesesAbiertos(concepto) {
+                if (!concepto) return;
+                const conceptoLower = concepto.toLowerCase();
+                
+                try {
+                    // Buscar en todos los registros del año
+                    const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
+                    const querySnapshot = await getDocs(q);
+                    
+                    const batch = runTransaction(db, async (transaction) => {
+                        for (const docSnap of querySnapshot.docs) {
+                            const docData = docSnap.data();
+                            if (docData.gastos && docData.gastos.length > 0) {
+                                // Filtrar el gasto planeado
+                                const gastosNuevos = docData.gastos.filter(g => {
+                                    return !(g.esPlaneado && g.concepto.toLowerCase() === conceptoLower);
+                                });
+                                // Si hubo cambios, actualizar el doc
+                                if (gastosNuevos.length < docData.gastos.length) {
+                                    transaction.update(docSnap.ref, { gastos: gastosNuevos });
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Si estamos en el mes actual, refrescar la vista
+                    if (document.getElementById('register-view').classList.contains('hidden') === false) {
+                        dibujarGrid(monthSelect.value);
+                    }
+                    
+                } catch (e) {
+                    console.error("Error actualizando meses abiertos:", e);
+                }
+            }
         }
     </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Control de Gastos (Bugs Corregidos)</title>
+    <title>Control de Gastos (Metas y Reportes)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -25,12 +25,12 @@
         .horizontal-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         #grid-wrapper[data-weeks="4"] .week-5 { display: none; }
         input[type="number"], input[type="text"], textarea { font-size: 16px !important; }
-        /* Estilos para logs */
-        #caja-log li, #gastos-fijos-lista li {
+        /* Estilos para logs y listas */
+        #caja-log li, #gastos-fijos-lista li, #metas-lista li {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 0; border-bottom: 1px solid #e5e7eb;
+            padding: 12px 0; border-bottom: 1px solid #e5e7eb;
         }
-        #caja-log li:last-child, #gastos-fijos-lista li:last-child { border-bottom: none; }
+        #caja-log li:last-child, #gastos-fijos-lista li:last-child, #metas-lista li:last-child { border-bottom: none; }
         #caja-log .log-concepto, #gastos-fijos-lista .log-concepto { font-size: 0.9rem; }
         #caja-log .log-fecha { font-size: 0.75rem; color: #6b7280; }
         #caja-log .log-monto.deposito { color: #16a34a; }
@@ -41,6 +41,10 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 16px 0; border-bottom: 1px solid #e5e7eb;
         }
+        /* NUEVO: Hacer clickables los conceptos */
+        #summary-category-list li { cursor: pointer; transition: background-color 0.1s; }
+        #summary-category-list li:hover { background-color: #f9fafb; /* gray-50 */ }
+        
         #summary-list .summary-item:last-child { border-bottom: none; }
         /* Estilos Tab Bar */
         .tab-button.active { color: #2563eb; }
@@ -56,20 +60,15 @@
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
         }
         /* Estilos para fila planeada */
-        .gasto-planeado {
-            background-color: #f3f4f6; /* gray-100 */
-            opacity: 0.8;
-            border-style: dashed;
-        }
-        .gasto-planeado input[type="text"] {
-            background-color: #f3f4f6; /* gray-100 */
-            font-style: italic;
-        }
-        .gasto-planeado .monto-planeado {
-            background-color: #e5e7eb; /* gray-200 */
-            color: #4b5563; /* gray-600 */
-            font-style: italic;
-            cursor: default !important;
+        .gasto-planeado { background-color: #f3f4f6; opacity: 0.8; border-style: dashed; }
+        .gasto-planeado input[type="text"] { background-color: #f3f4f6; font-style: italic; }
+        .gasto-planeado .monto-planeado { background-color: #e5e7eb; color: #4b5563; font-style: italic; cursor: default !important; }
+        
+        /* NUEVO: Estilos Metas de Ahorro */
+        .progress-bar { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; height: 8px; }
+        .progress-bar-inner {
+            background-color: #22c55e; /* green-500 */
+            height: 100%; transition: width 0.5s ease-in-out;
         }
     </style>
 </head>
@@ -84,34 +83,23 @@
             <select id="month-select" class="w-full text-white p-3 text-center text-3xl font-extrabold tracking-widest uppercase appearance-none rounded-t-2xl shadow-lg focus:outline-none cursor-pointer transition-colors duration-300">
                 <!-- Opciones de mes -->
             </select>
-
             <!-- Contenedor del Grid -->
             <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
                 <div class="horizontal-scroll">
                     <div id="grid-wrapper" class="min-w-[800px] md:min-w-full" data-weeks="5">
                         <!-- Encabezado del Grid -->
-                        <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2 text-base">
-                            <!-- Se genera con JS -->
-                        </div>
+                        <div id="grid-header" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] bg-gray-200 p-4 font-bold sticky top-0 z-10 gap-2 text-base"></div>
                         <!-- Cuerpo del Grid -->
                         <div id="grid-body" class="p-4 space-y-2">
-                            <div id="sueldo-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg" data-row-type="sueldo">
-                                <!-- Contenido generado por JS -->
-                            </div>
-                            <!-- Filas de gastos se insertan aquí -->
+                            <div id="sueldo-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white rounded-lg" data-row-type="sueldo"></div>
                         </div>
                         <!-- Pie de página del Grid (Totales) -->
                         <div id="grid-footer" class="bg-gray-50 p-4 space-y-2 sticky bottom-0 z-10 border-t border-gray-200">
-                            <div id="totals-gastos-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold text-gray-700">
-                                <!-- Contenido generado por JS -->
-                            </div>
-                            <div id="totals-restante-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold">
-                                <!-- Contenido generado por JS -->
-                            </div>
+                            <div id="totals-gastos-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold text-gray-700"></div>
+                            <div id="totals-restante-row" class="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center font-bold"></div>
                         </div>
-                    </div> <!-- Fin grid-wrapper -->
-                </div> <!-- Fin horizontal-scroll -->
-
+                    </div>
+                </div>
                 <!-- Botones de Acción -->
                 <div class="bg-white p-4 border-t border-gray-200 flex justify-between items-center">
                     <button id="add-row-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-base">
@@ -127,8 +115,15 @@
             <!-- Header Limpio -->
             <div class="bg-white p-4 rounded-t-2xl shadow-lg">
                 <h2 class="text-3xl font-bold text-gray-900 text-center">
-                    Resumen Anual
+                    Resumen
                 </h2>
+                <!-- NUEVO: Filtro de Mes -->
+                <div class="mt-4">
+                    <select id="resumen-month-filter" class="w-full border border-gray-300 rounded-lg p-2 text-base focus:ring-blue-500 focus:border-blue-500">
+                        <option value="annual">Todo el Año</option>
+                        <!-- Se llena con JS -->
+                    </select>
+                </div>
                 <!-- Toggle de vista -->
                 <div class="flex justify-center mt-4">
                     <div class="summary-toggle">
@@ -144,7 +139,7 @@
                 <div id="summary-lista-view">
                     <!-- Total General -->
                     <div class="p-6 text-center bg-gray-800 text-white">
-                        <p class="text-sm font-medium text-gray-300 uppercase">Balance Neto (Año)</p>
+                        <p id="summary-total-title" class="text-sm font-medium text-gray-300 uppercase">Balance Neto (Año)</p>
                         <p id="summary-total-neto" class="text-4xl font-bold">$0.00</p>
                         <div class="flex justify-center gap-6 text-sm mt-4 text-gray-300">
                            <div>
@@ -157,13 +152,14 @@
                            </div>
                         </div>
                     </div>
-                    <!-- Lista de Meses -->
+                    <!-- Lista de Meses (SOLO VISIBLE EN VISTA ANUAL) -->
                     <ul id="summary-list" class="p-4 md:p-6">
                         <li class="text-center text-gray-500 py-8">Cargando resumen...</li>
                     </ul>
                     <!-- Sección Gastos por Concepto -->
                     <div class="p-4 md:p-6 border-t border-gray-200">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos por Concepto (Anual)</h3>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Gastos por Concepto</h3>
+                        <p class="text-sm text-gray-500 -mt-2 mb-4">Haz click en un concepto para ver la tendencia.</p>
                         <ul id="summary-category-list" class="space-y-3 max-h-72 overflow-y-auto">
                             <li class="text-center text-gray-500 py-4">Calculando...</li>
                         </ul>
@@ -180,33 +176,57 @@
         </div>
         
         <!-- VISTA CAJA DE AHORRO (Oculta) -->
-        <div id="caja-view" class="hidden">
+        <div id="caja-view" class="hidden space-y-6">
             <!-- Header Limpio -->
-            <div class="bg-white p-4 rounded-t-2xl shadow-lg">
+            <div class="bg-white p-4 rounded-2xl shadow-lg">
                 <h2 class="text-3xl font-bold text-gray-900 text-center">
                     Caja de Ahorro
                 </h2>
             </div>
-            <!-- Panel de Caja de Ahorro -->
-            <div class="bg-white rounded-b-2xl shadow-xl overflow-hidden">
-                <div class="p-6">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div class="text-center md:text-left">
-                            <p class="text-sm font-medium text-gray-500 uppercase">Saldo Actual</p>
-                            <p id="caja-saldo" class="text-4xl font-bold text-green-600">$0.00</p>
-                        </div>
-                        <div class="flex gap-3 justify-center">
-                            <button id="caja-retiro-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
-                                Retirar
-                            </button>
-                            <button id="caja-deposito-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
-                                Depositar
-                            </button>
-                        </div>
+            
+            <!-- Panel de Saldos (MODIFICADO) -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Saldo Total -->
+                    <div class="text-center md:text-left border-b md:border-b-0 md:border-r pb-6 md:pb-0 md:pr-6 border-gray-200">
+                        <p class="text-sm font-medium text-gray-500 uppercase">Saldo Total en Caja</p>
+                        <p id="caja-saldo" class="text-4xl font-bold text-green-600">$0.00</p>
+                    </div>
+                    <!-- Saldo Disponible -->
+                    <div class="text-center md:text-left">
+                        <p class="text-sm font-medium text-gray-500 uppercase">Saldo Disponible (Sin Asignar)</p>
+                        <p id="caja-disponible" class="text-4xl font-bold text-gray-800">$0.00</p>
                     </div>
                 </div>
+                <div class="flex gap-3 justify-center mt-6">
+                    <button id="caja-retiro-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                        Retirar
+                    </button>
+                    <button id="caja-deposito-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all">
+                        Depositar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- NUEVO: Panel de Metas de Ahorro -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-2xl font-bold text-gray-900">Mis Metas de Ahorro</h3>
+                    <button id="nueva-meta-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-base">
+                        + Nueva Meta
+                    </button>
+                </div>
+                <div class="p-6">
+                    <ul id="metas-lista" class="space-y-4">
+                        <li class="text-center text-gray-500">Cargando metas...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Panel de Movimientos -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
                 <div class="bg-gray-50 p-6 border-t border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos</h4>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Últimos Movimientos (Caja)</h4>
                     <ul id="caja-log" class="space-y-2 max-h-[50vh] overflow-y-auto">
                         <li class="text-center text-gray-500 py-4">Cargando movimientos...</li>
                     </ul>
@@ -229,7 +249,6 @@
                     <p class="text-gray-600 mb-4 text-sm">
                         Agrega gastos que se repiten cada mes. Aparecerán como un recordatorio en tu tabla mensual.
                     </p>
-                    <!-- Formulario para agregar -->
                     <form id="gasto-fijo-form" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                         <div class="md:col-span-2">
                             <label for="gasto-fijo-concepto" class="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
@@ -263,24 +282,20 @@
 
     <!-- TAB BAR FIJA (CON 4 TABS) -->
     <nav class="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 shadow-t-lg z-50 flex justify-around">
-        <!-- Tab 1: Registro -->
         <button id="tab-registro" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-blue-600 active" data-view="register-view">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
             <span class="text-xs font-medium">Registro</span>
         </button>
-        <!-- Tab 2: Resumen -->
         <button id="tab-resumen" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="summary-view">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
             <span class="text-xs font-medium">Resumen</span>
         </button>
-        <!-- Tab 3: Caja -->
         <button id="tab-caja" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="caja-view">
              <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             <span class="text-xs font-medium">Caja</span>
         </button>
-        <!-- Tab 4: Ajustes -->
         <button id="tab-ajustes" class="tab-button flex-1 flex flex-col items-center justify-center p-3 text-gray-500" data-view="ajustes-view">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.573-1.066z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.573-1.066z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             <span class="text-xs font-medium">Ajustes</span>
         </button>
     </nav>
@@ -307,7 +322,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: CAJA DE AHORRO -->
+    <!-- MODAL 2: CAJA DE AHORRO (DEPOSITO/RETIRO) -->
     <div id="caja-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
             <div class="p-6 border-b border-gray-200">
@@ -336,6 +351,76 @@
             </div>
         </div>
     </div>
+    
+    <!-- NUEVO MODAL 3: NUEVA META DE AHORRO -->
+    <div id="nueva-meta-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+            <div class="p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-900">Crear Nueva Meta</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label for="nueva-meta-nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Meta</label>
+                    <input type="text" id="nueva-meta-nombre" class="w-full border border-gray-300 rounded-lg p-3 text-base focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Moto Nueva">
+                </div>
+                <div>
+                    <label for="nueva-meta-total" class="block text-sm font-medium text-gray-700 mb-1">Costo Total</label>
+                    <input type="number" id="nueva-meta-total" class="w-full border border-gray-300 rounded-lg p-3 text-base font-mono focus:ring-blue-500 focus:border-blue-500" placeholder="50000.00">
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl">
+                <button id="nueva-meta-close-btn" class="bg-white hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 transition-all text-base">
+                    Cancelar
+                </button>
+                <button id="nueva-meta-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base">
+                    Crear Meta
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NUEVO MODAL 4: ABONAR A META -->
+    <div id="abonar-meta-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+            <div class="p-6 border-b border-gray-200">
+                <h3 id="abonar-meta-title" class="text-xl font-semibold text-gray-900">Abonar a Meta</h3>
+                <p id="abonar-meta-disponible" class="text-sm text-gray-500">Saldo Disponible: $0.00</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label for="abonar-meta-monto" class="block text-sm font-medium text-gray-700 mb-1">Monto a Abonar</label>
+                    <input type="number" id="abonar-meta-monto" class="w-full border border-gray-300 rounded-lg p-3 text-base font-mono focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                    <p id="abonar-meta-error" class="text-sm text-red-600 mt-1 hidden">No tienes suficiente saldo disponible.</p>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl">
+                <button id="abonar-meta-close-btn" class="bg-white hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 transition-all text-base">
+                    Cancelar
+                </button>
+                <button id="abonar-meta-save-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base">
+                    Abonar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NUEVO MODAL 5: TENDENCIA DE GASTO -->
+    <div id="tendencia-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="tendencia-modal-title" class="text-xl font-semibold text-gray-900">Tendencia de Gasto</h3>
+                <button id="tendencia-modal-close-btn" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="relative w-full h-72 md:h-80">
+                    <canvas id="tendencia-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- 4. TODO EL CÓDIGO JAVASCRIPT (AHORA COMO MÓDULO) -->
     <script type="module">
@@ -345,7 +430,7 @@
         import { 
             getFirestore, doc, getDoc, setDoc, runTransaction, 
             collection, onSnapshot, query, orderBy, limit, serverTimestamp, addDoc,
-            getDocs, where, documentId, deleteDoc
+            getDocs, where, documentId, deleteDoc, updateDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- VARIABLES GLOBALES DE FIREBASE ---
@@ -360,9 +445,12 @@
         
         let app, auth, db, userId;
         let cajaDocRef, cajaLogColRef, registrosColRef, gastosFijosColRef;
-        let saldoActualGlobal = 0;
+        let metasColRef; // NUEVO
+        let saldoCajaGlobal = 0; // Saldo TOTAL
+        let saldoDisponibleGlobal = 0; // Saldo NO ASIGNADO
         let tipoMovimientoActual = 'deposito'; 
         let gastosChartInstance = null;
+        let tendenciaChartInstance = null; // NUEVO
         
         // setLogLevel('Debug'); 
 
@@ -380,6 +468,9 @@
                             cajaLogColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'movimientos');
                             registrosColRef = collection(db, 'usuarios', userId, 'registros');
                             gastosFijosColRef = collection(db, 'usuarios', userId, 'gastos_fijos');
+                            // <<<--- INICIO DE LA CORRECCIÓN
+                            metasColRef = collection(db, 'usuarios', userId, 'ahorro', 'caja', 'metas'); // CORREGIDO: 5 segmentos
+                            // <<<--- FIN DE LA CORRECCIÓN
                             resolve();
                         } else {
                             try { await signInAnonymously(auth); } catch (e) { reject(e); }
@@ -427,9 +518,12 @@
             let currentModalInput = null; 
             // --- DOM (Caja de Ahorro) ---
             const cajaSaldoEl = document.getElementById('caja-saldo');
+            const cajaDisponibleEl = document.getElementById('caja-disponible'); // NUEVO
             const cajaLogEl = document.getElementById('caja-log');
             const cajaDepositoBtn = document.getElementById('caja-deposito-btn');
             const cajaRetiroBtn = document.getElementById('caja-retiro-btn');
+            const nuevaMetaBtn = document.getElementById('nueva-meta-btn'); // NUEVO
+            const metasListaEl = document.getElementById('metas-lista'); // NUEVO
             // --- DOM (Modal Caja) ---
             const cajaModal = document.getElementById('caja-modal');
             const cajaModalTitle = document.getElementById('caja-modal-title');
@@ -438,22 +532,41 @@
             const cajaModalError = document.getElementById('caja-modal-error');
             const cajaModalCloseBtn = document.getElementById('caja-modal-close-btn');
             const cajaModalSaveBtn = document.getElementById('caja-modal-save-btn');
+            // --- DOM (Modal Nueva Meta) ---
+            const nuevaMetaModal = document.getElementById('nueva-meta-modal');
+            const nuevaMetaNombre = document.getElementById('nueva-meta-nombre');
+            const nuevaMetaTotal = document.getElementById('nueva-meta-total');
+            const nuevaMetaCloseBtn = document.getElementById('nueva-meta-close-btn');
+            const nuevaMetaSaveBtn = document.getElementById('nueva-meta-save-btn');
+            // --- DOM (Modal Abonar Meta) ---
+            const abonarMetaModal = document.getElementById('abonar-meta-modal');
+            const abonarMetaTitle = document.getElementById('abonar-meta-title');
+            const abonarMetaDisponible = document.getElementById('abonar-meta-disponible');
+            const abonarMetaMonto = document.getElementById('abonar-meta-monto');
+            const abonarMetaError = document.getElementById('abonar-meta-error');
+            const abonarMetaCloseBtn = document.getElementById('abonar-meta-close-btn');
+            const abonarMetaSaveBtn = document.getElementById('abonar-meta-save-btn');
+            let metaActualId = null; // Para saber a qué meta abonar
             // --- DOM (Resumen Anual) ---
             const summaryList = document.getElementById('summary-list');
+            const summaryTotalTitle = document.getElementById('summary-total-title');
             const summaryTotalNeto = document.getElementById('summary-total-neto');
             const summaryTotalGanado = document.getElementById('summary-total-ganado');
             const summaryTotalGastado = document.getElementById('summary-total-gastado');
             const summaryCategoryList = document.getElementById('summary-category-list');
+            const resumenMonthFilter = document.getElementById('resumen-month-filter'); // NUEVO
             const toggleLista = document.getElementById('toggle-lista');
             const toggleGrafica = document.getElementById('toggle-grafica');
             const summaryListaView = document.getElementById('summary-lista-view');
             const summaryGraficaView = document.getElementById('summary-grafica-view');
             const chartCanvas = document.getElementById('gastos-chart');
+            // --- DOM (Modal Tendencia) ---
+            const tendenciaModal = document.getElementById('tendencia-modal');
+            const tendenciaModalTitle = document.getElementById('tendencia-modal-title');
+            const tendenciaModalCloseBtn = document.getElementById('tendencia-modal-close-btn');
+            const tendenciaChartCanvas = document.getElementById('tendencia-chart');
             // --- DOM (Ajustes) ---
             const gastoFijoForm = document.getElementById('gasto-fijo-form');
-            const gastoFijoConcepto = document.getElementById('gasto-fijo-concepto');
-            const gastoFijoMonto = document.getElementById('gasto-fijo-monto');
-            const gastoFijoDia = document.getElementById('gasto-fijo-dia');
             const gastosFijosLista = document.getElementById('gastos-fijos-lista');
             // --- CONSTANTES ---
             const AÑO_ACTUAL = new Date().getFullYear();
@@ -474,8 +587,8 @@
                 });
                 clickedButton.classList.add('active', 'text-blue-600');
                 clickedButton.classList.remove('text-gray-500');
-                if (viewId === 'summary-view') { cargarResumenAnual(); }
-                // BUG 3 (TRIPLE REGISTRO) FIX: El listener de Ajustes ya no se llama aquí.
+                if (viewId === 'summary-view') { cargarResumen(); } // Carga con filtro
+                if (viewId === 'caja-view') { iniciarListenersCaja(); } // Llama a caja
                 window.scrollTo(0, 0);
             }
             tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
@@ -490,6 +603,12 @@
                     if (index === mesActual) { option.selected = true; }
                     option.className = "bg-white text-gray-900 text-base font-normal normal-case tracking-normal";
                     monthSelect.appendChild(option);
+                    
+                    // NUEVO: Llenar filtro de resumen
+                    const filterOption = document.createElement('option');
+                    filterOption.value = index;
+                    filterOption.textContent = mes;
+                    resumenMonthFilter.appendChild(filterOption);
                 });
             }
             function setBannerColor(mesIndex) {
@@ -514,7 +633,6 @@
                 return `${dia}-${mes}`;
             }
 
-            // --- FUNCIÓN dibujarGrid MODIFICADA (FIX BUG 1) ---
             async function dibujarGrid(mesIndex) {
                 saveStatusEl.textContent = "Cargando mes...";
                 const mesNum = parseInt(mesIndex, 10);
@@ -524,30 +642,21 @@
                 gridWrapper.dataset.weeks = numSemanas;
                 const docId = `${AÑO_ACTUAL}-${String(mesNum).padStart(2, '0')}`;
                 const docRef = doc(registrosColRef, docId); 
-                
                 let docData = { sueldo: [], gastos: [] };
-                
                 try {
-                    // 1. Cargar datos guardados (si existen)
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
                         docData = docSnap.data();
-                        // Asegurarse de que los arrays existan
                         if (!docData.sueldo) docData.sueldo = [];
                         if (!docData.gastos) docData.gastos = [];
                     }
-
-                    // 2. Cargar gastos fijos (SIEMPRE)
                     const gastosFijosSnap = await getDocs(gastosFijosColRef);
                     const conceptosExistentes = docData.gastos.map(g => g.concepto.toLowerCase());
-
                     let seAgregaronNuevosGastosFijos = false;
                     
                     gastosFijosSnap.forEach(doc => {
                         const gastoFijo = doc.data();
                         const conceptoFijo = gastoFijo.concepto;
-                        
-                        // 3. Comparar: Si un gasto fijo NO está en los datos guardados, agregarlo
                         if (!conceptosExistentes.includes(conceptoFijo.toLowerCase())) {
                             const dia = gastoFijo.dia;
                             let weekIndex = -1;
@@ -557,21 +666,18 @@
                                 if (dia >= diaLimite && dia <= diaJueves) { weekIndex = i; break; }
                             }
                             if (weekIndex === -1) { weekIndex = thursdays.length - 1; }
-                            
                             let montos = ["", "", "", "", ""];
                             montos[weekIndex] = gastoFijo.monto;
-                            
                             docData.gastos.push({
                                 concepto: conceptoFijo,
                                 montos: montos,
                                 detalles: ["", "", "", "", ""],
-                                esPlaneado: true // Se agrega como "planeado"
+                                esPlaneado: true 
                             });
                             seAgregaronNuevosGastosFijos = true;
                         }
                     });
                     
-                    // 4. Dibujar Encabezado
                     let headerHTML = '<div class="p-2 sticky left-0 bg-gray-200 z-10">Concepto</div>';
                     for (let i = 0; i < 5; i++) {
                         const date = thursdays[i];
@@ -581,7 +687,6 @@
                     }
                     gridHeader.innerHTML = headerHTML;
                     
-                    // 5. Dibujar Cuerpo
                     gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(gasto => gasto.remove());
                     gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(gasto => gasto.remove());
                     
@@ -603,7 +708,6 @@
                         agregarFilaDeGasto(); 
                     }
 
-                    // 6. Dibujar Pie (Totales)
                     let totalGastoHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Total Gastos</div>';
                     let totalRestanteHTML = '<div class="p-2 sticky left-0 bg-gray-50 z-10">Restante</div>';
                     for (let i = 0; i < 5; i++) {
@@ -613,44 +717,32 @@
                     }
                     totalsGastosRow.innerHTML = totalGastoHTML;
                     totalsRestanteRow.innerHTML = totalRestanteHTML;
-                    
                     calcularTotales();
                     saveStatusEl.textContent = "Listo ✔";
-                    
-                    // 7. Si se agregaron gastos, guardar
-                    if (seAgregaronNuevosGastosFijos) {
-                        triggerSave();
-                    }
-
+                    if (seAgregaronNuevosGastosFijos) { triggerSave(); }
                 } catch (e) {
                     console.error("Error cargando datos: ", e);
                     saveStatusEl.textContent = "Error al cargar ❌";
                 }
             }
             
-            // --- FUNCIÓN agregarFilaDeGasto MODIFICADA (FIX BUG 2) ---
             function agregarFilaDeGasto(concepto = "", montos = [], detalles = [], esPlaneado = false) {
                 const gastoRow = document.createElement('div');
                 let gastoHTML = '';
-                
                 if (esPlaneado) {
                     gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg gasto-planeado`;
                     gastoRow.dataset.rowType = "gasto-planeado";
                     gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
-                    
                     gastoHTML = `
                         <div class="sticky left-0 z-5 flex items-center gap-1 bg-gray-100 pr-2">
                             <input type="text" value="${concepto}" placeholder="Concepto..." readonly class="border-none text-gray-900 rounded-lg p-2 w-full focus:ring-0 text-base">
-                            <!-- BOTÓN CONFIRMAR -->
                             <button class="confirm-gasto-btn text-green-500 hover:text-green-700 p-1 rounded-full transition-all" title="Confirmar pago">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </button>
-                            <!-- NUEVO BOTÓN BORRAR (FIX BUG 2) -->
                             <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all" title="Borrar recordatorio">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>`;
-                    
                     for (let i = 0; i < 5; i++) {
                         const montoValor = montos[i] || ""; 
                         const weekClass = (i === 4) ? 'week-5' : '';
@@ -660,7 +752,6 @@
                     gastoRow.className = `grid grid-cols-[minmax(150px,_2fr)_repeat(5,_minmax(100px,_1fr))] gap-2 items-center bg-white border border-gray-200 rounded-lg`;
                     gastoRow.dataset.rowType = "gasto";
                     gastoRow.dataset.detalles = JSON.stringify(detalles.length ? detalles : ["","","","",""]);
-
                     gastoHTML = `
                         <div class="sticky left-0 z-5 flex items-center gap-2 bg-white pr-2">
                             <input type="text" value="${concepto}" placeholder="Concepto de gasto..." class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
@@ -668,7 +759,6 @@
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>`;
-                    
                     for (let i = 0; i < 5; i++) {
                         const montoValor = montos[i] || ""; 
                         const weekClass = (i === 4) ? 'week-5' : '';
@@ -682,7 +772,7 @@
             function calcularTotales() {
                 const numSemanas = 5; 
                 const sueldoInputs = sueldoRow.querySelectorAll('[data-name="sueldo-input"]');
-                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]'); // Solo contar gastos confirmados
+                const filasGastos = gridBody.querySelectorAll('[data-row-type="gasto"]');
                 let totalesSueldo = new Array(numSemanas).fill(0);
                 let totalesGasto = new Array(numSemanas).fill(0);
                 let totalesRestante = new Array(numSemanas).fill(0);
@@ -721,27 +811,23 @@
                 const docRef = doc(registrosColRef, docId);
                 const sueldoData = Array.from(sueldoRow.querySelectorAll('[data-name="sueldo-input"]')).map(input => input.value);
                 const gastosData = [];
-                // Guardar filas de GASTO
                 gridBody.querySelectorAll('[data-row-type="gasto"]').forEach(fila => {
                     const concepto = fila.querySelector('input[type="text"]').value;
                     const montos = Array.from(fila.querySelectorAll('[data-name="gasto-input"]')).map(input => input.value);
                     if (concepto || montos.some(m => m)) {
                         gastosData.push({
-                            concepto: concepto,
-                            montos: montos,
+                            concepto: concepto, montos: montos,
                             detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
                             esPlaneado: false
                         });
                     }
                 });
-                // Guardar filas de GASTO-PLANEADO
                 gridBody.querySelectorAll('[data-row-type="gasto-planeado"]').forEach(fila => {
                     const concepto = fila.querySelector('input[type="text"]').value;
                     const montos = Array.from(fila.querySelectorAll('[data-name="gasto-pre"]')).map(input => input.value);
                     if (concepto || montos.some(m => m)) {
                         gastosData.push({
-                            concepto: concepto,
-                            montos: montos,
+                            concepto: concepto, montos: montos,
                             detalles: JSON.parse(fila.dataset.detalles || '["","","","",""]'),
                             esPlaneado: true
                         });
@@ -749,7 +835,7 @@
                 });
                 const dataPayload = { sueldo: sueldoData, gastos: gastosData };
                 try {
-                    await setDoc(docRef, dataPayload); 
+                    await setDoc(docRef, dataPayload, { merge: true }); // Usar merge para seguridad
                     saveStatusEl.textContent = "Guardado ✔";
                 } catch (e) {
                     console.error("Error guardando datos: ", e);
@@ -783,17 +869,21 @@
                 modalTextarea.focus();
             }
 
-            // --- LÓGICA DE CAJA DE AHORRO ---
+            // --- LÓGICA DE CAJA DE AHORRO (MODIFICADA PARA METAS) ---
             function iniciarListenersCaja() {
+                // Listener para el Saldo Total de la Caja
                 onSnapshot(cajaDocRef, (doc) => {
                     if (doc.exists()) {
-                        saldoActualGlobal = doc.data().saldoActual || 0;
+                        saldoCajaGlobal = doc.data().saldoActual || 0;
                     } else {
                         setDoc(cajaDocRef, { saldoActual: 0 }).catch(e => console.error("Error inicializando caja:", e));
-                        saldoActualGlobal = 0;
+                        saldoCajaGlobal = 0;
                     }
-                    cajaSaldoEl.textContent = `$${saldoActualGlobal.toFixed(2)}`;
+                    cajaSaldoEl.textContent = `$${saldoCajaGlobal.toFixed(2)}`;
+                    actualizarSaldosDisponibles(); // Actualiza disponible
                 });
+
+                // Listener para los Movimientos
                 const logQuery = query(cajaLogColRef, orderBy("fecha", "desc"), limit(10));
                 onSnapshot(logQuery, (snapshot) => {
                     cajaLogEl.innerHTML = ""; 
@@ -815,7 +905,59 @@
                         cajaLogEl.appendChild(li);
                     });
                 });
+                
+                // NUEVO: Listener para las Metas
+                onSnapshot(query(metasColRef, orderBy("nombre")), (snapshot) => {
+                    metasListaEl.innerHTML = "";
+                    let totalAsignado = 0;
+                    if (snapshot.empty) {
+                        metasListaEl.innerHTML = '<li class="text-center text-gray-500">Aún no tienes metas.</li>';
+                    }
+                    snapshot.docs.forEach(doc => {
+                        const meta = doc.data();
+                        const metaId = doc.id;
+                        totalAsignado += meta.asignado || 0;
+                        const porcentaje = (meta.totalMeta > 0) ? ((meta.asignado / meta.totalMeta) * 100) : 0;
+                        
+                        const li = document.createElement('li');
+                        li.className = "space-y-3";
+                        li.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold capitalize text-gray-800">${meta.nombre}</span>
+                                <div class="flex gap-2">
+                                    <button class="abonar-meta-btn bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full hover:bg-green-200" data-id="${metaId}" data-nombre="${meta.nombre}">+ Abonar</button>
+                                    <button class="delete-meta-btn text-red-400 hover:text-red-600 p-1" data-id="${metaId}" title="Borrar meta">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-bar-inner" style="width: ${porcentaje.toFixed(2)}%;"></div>
+                            </div>
+                            <div class="text-sm text-gray-600 font-mono text-right">
+                                $${(meta.asignado || 0).toFixed(2)} / $${(meta.totalMeta || 0).toFixed(2)}
+                            </div>
+                        `;
+                        metasListaEl.appendChild(li);
+                    });
+                    
+                    saldoDisponibleGlobal = saldoCajaGlobal - totalAsignado;
+                    cajaDisponibleEl.textContent = `$${saldoDisponibleGlobal.toFixed(2)}`;
+                });
             }
+            
+            function actualizarSaldosDisponibles() {
+                // Esta función es llamada por los dos listeners (caja y metas)
+                getDocs(metasColRef).then(snapshot => {
+                    let totalAsignado = 0;
+                    snapshot.forEach(doc => {
+                        totalAsignado += doc.data().asignado || 0;
+                    });
+                    saldoDisponibleGlobal = saldoCajaGlobal - totalAsignado;
+                    cajaDisponibleEl.textContent = `$${saldoDisponibleGlobal.toFixed(2)}`;
+                });
+            }
+
             function openCajaModal(tipo) {
                 tipoMovimientoActual = tipo;
                 cajaModal.classList.remove('hidden');
@@ -824,14 +966,17 @@
                 cajaModalError.classList.add('hidden');
                 cajaModalSaveBtn.disabled = false;
                 if (tipo === 'deposito') {
-                    cajaModalTitle.textContent = "Depositar en Ahorros";
+                    cajaModalTitle.textContent = "Depositar en Caja";
                     cajaModalSaveBtn.className = "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
                 } else {
-                    cajaModalTitle.textContent = "Retirar de Ahorros";
+                    cajaModalTitle.textContent = "Retirar de Caja";
                     cajaModalSaveBtn.className = "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all text-base";
+                    cajaModalError.textContent = "Fondos insuficientes (total de caja).";
                 }
                 cajaModalMonto.focus();
             }
+            
+            // MODIFICADO: Salva a la caja general
             async function handleCajaSave() {
                 const monto = parseFloat(cajaModalMonto.value) || 0;
                 let concepto = cajaModalConcepto.value || (tipoMovimientoActual === 'deposito' ? 'Depósito' : 'Retiro');
@@ -839,10 +984,17 @@
                     cajaModalError.textContent = "El monto debe ser positivo";
                     cajaModalError.classList.remove('hidden'); return;
                 }
-                if (tipoMovimientoActual === 'retiro' && monto > saldoActualGlobal) {
-                    cajaModalError.textContent = "Fondos insuficientes";
+                
+                // Si es retiro, validamos contra el SALDO TOTAL (no el disponible)
+                // NO PUEDES retirar más de lo que hay en la caja
+                if (tipoMovimientoActual === 'retiro' && monto > saldoCajaGlobal) {
+                    cajaModalError.textContent = "Fondos insuficientes (total de caja).";
                     cajaModalError.classList.remove('hidden'); return;
                 }
+                // ADVERTENCIA: Si retiras, puedes hacer que tu saldo disponible sea negativo
+                // (Ej: Tienes $1000, asignaste $800. Disponible $200. Retiras $500. Saldo total $500, Asignado $800, Disponible $-300)
+                // Esto es financieramente correcto, la app te dice "DEBES $300 a tus metas"
+                
                 cajaModalSaveBtn.disabled = true;
                 cajaModalSaveBtn.textContent = "Guardando...";
                 try {
@@ -853,9 +1005,9 @@
                         if (tipoMovimientoActual === 'deposito') {
                             nuevoSaldo = saldoPrevio + monto;
                         } else {
-                            if (saldoPrevio < monto) throw new Error("Fondos insuficientes");
                             nuevoSaldo = saldoPrevio - monto;
                         }
+                        
                         if (cajaDoc.exists()) {
                             transaction.update(cajaDocRef, { saldoActual: nuevoSaldo });
                         } else {
@@ -875,18 +1027,117 @@
                 cajaModalSaveBtn.disabled = false;
                 cajaModalSaveBtn.textContent = "Confirmar";
             }
+            
+            // --- NUEVO: Listeners Metas ---
+            nuevaMetaBtn.addEventListener('click', () => {
+                nuevaMetaNombre.value = "";
+                nuevaMetaTotal.value = "";
+                nuevaMetaModal.classList.remove('hidden');
+                nuevaMetaNombre.focus();
+            });
+            nuevaMetaCloseBtn.addEventListener('click', () => nuevaMetaModal.classList.add('hidden'));
+            nuevaMetaSaveBtn.addEventListener('click', async () => {
+                const nombre = nuevaMetaNombre.value;
+                const totalMeta = parseFloat(nuevaMetaTotal.value) || 0;
+                if (!nombre || totalMeta <= 0) {
+                    alert("Por favor, pon un nombre y un costo total válido."); return;
+                }
+                try {
+                    const newMetaRef = doc(metasColRef);
+                    await setDoc(newMetaRef, {
+                        nombre: nombre,
+                        totalMeta: totalMeta,
+                        asignado: 0
+                    });
+                    nuevaMetaModal.classList.add('hidden');
+                } catch (e) { console.error("Error creando meta:", e); }
+            });
+            
+            // Listener para botones de Abonar/Borrar en la lista
+            metasListaEl.addEventListener('click', async (e) => {
+                const abonarBtn = e.target.closest('.abonar-meta-btn');
+                const deleteBtn = e.target.closest('.delete-meta-btn');
+                
+                if (abonarBtn) {
+                    metaActualId = abonarBtn.dataset.id;
+                    abonarMetaTitle.textContent = `Abonar a "${abonarBtn.dataset.nombre}"`;
+                    abonarMetaDisponible.textContent = `Saldo Disponible: $${saldoDisponibleGlobal.toFixed(2)}`;
+                    abonarMetaMonto.value = "";
+                    abonarMetaMonto.max = saldoDisponibleGlobal;
+                    abonarMetaError.classList.add('hidden');
+                    abonarMetaModal.classList.remove('hidden');
+                    abonarMetaMonto.focus();
+                }
+                
+                if (deleteBtn) {
+                    const id = deleteBtn.dataset.id;
+                    const metaDoc = await getDoc(doc(metasColRef, id));
+                    const asignado = metaDoc.data().asignado;
+                    
+                    if (window.confirm(`¿Seguro que quieres borrar esta meta? (Se liberarán $${asignado.toFixed(2)} al Saldo Disponible)`)) {
+                        try {
+                            await deleteDoc(doc(metasColRef, id));
+                            // No es necesario sumar a saldoCajaGlobal, solo se recalcula el disponible
+                            actualizarSaldosDisponibles(); 
+                        } catch (e) { console.error("Error borrando meta:", e); }
+                    }
+                }
+            });
+            
+            abonarMetaCloseBtn.addEventListener('click', () => abonarMetaModal.classList.add('hidden'));
+            abonarMetaSaveBtn.addEventListener('click', async () => {
+                const montoAbonar = parseFloat(abonarMetaMonto.value) || 0;
+                if (montoAbonar <= 0) return;
+                if (montoAbonar > saldoDisponibleGlobal) {
+                    abonarMetaError.classList.remove('hidden');
+                    return;
+                }
+                
+                try {
+                    abonarMetaSaveBtn.disabled = true;
+                    const metaRef = doc(metasColRef, metaActualId);
+                    await runTransaction(db, async (transaction) => {
+                        const metaDoc = await transaction.get(metaRef);
+                        const asignadoPrevio = metaDoc.data().asignado || 0;
+                        const nuevoAsignado = asignadoPrevio + montoAbonar;
+                        transaction.update(metaRef, { asignado: nuevoAsignado });
+                    });
+                    abonarMetaModal.classList.add('hidden');
+                } catch (e) { console.error("Error al abonar a meta:", e);
+                } finally { abonarMetaSaveBtn.disabled = false; }
+            });
 
-            // --- LÓGICA RESUMEN ANUAL (CON GRÁFICA) ---
-            async function cargarResumenAnual() {
+
+            // --- LÓGICA RESUMEN ANUAL (MODIFICADA CON FILTRO) ---
+            async function cargarResumen() {
                 summaryList.innerHTML = '<li class="text-center text-gray-500 py-8">Calculando resumen...</li>';
                 summaryCategoryList.innerHTML = '<li class="text-center text-gray-500 py-4">Calculando...</li>';
-                const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
-                let granTotalNeto = 0, granTotalSueldo = 0, granTotalGasto = 0;
-                let gastosPorConcepto = {}; 
-                let mesesData = new Array(12).fill(null);
+                
+                const filtroMes = resumenMonthFilter.value; // "annual" o "0"-"11"
+                let docs = [];
+
                 try {
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach(doc => {
+                    if (filtroMes === "annual") {
+                        summaryTotalTitle.textContent = "Balance Neto (Año)";
+                        summaryList.classList.remove('hidden'); // Mostrar lista de meses
+                        const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
+                        const querySnapshot = await getDocs(q);
+                        docs = querySnapshot.docs;
+                    } else {
+                        summaryTotalTitle.textContent = `Balance Neto (${MESES[filtroMes]})`;
+                        summaryList.classList.add('hidden'); // Ocultar lista de meses
+                        const docId = `${AÑO_ACTUAL}-${String(filtroMes).padStart(2, '0')}`;
+                        const docSnap = await getDoc(doc(registrosColRef, docId));
+                        if (docSnap.exists()) {
+                            docs = [docSnap];
+                        }
+                    }
+
+                    let granTotalNeto = 0, granTotalSueldo = 0, granTotalGasto = 0;
+                    let gastosPorConcepto = {}; 
+                    let mesesData = new Array(12).fill(null);
+                    
+                    docs.forEach(doc => {
                         const mesIndex = parseInt(doc.id.split('-')[1], 10);
                         const data = doc.data();
                         const totalSueldoMes = (data.sueldo || []).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
@@ -908,41 +1159,46 @@
                         granTotalGasto += totalGastoMes;
                         mesesData[mesIndex] = { totalSueldoMes, totalGastoMes, totalNetoMes };
                     });
-                    // --- Renderizar Resumen Mensual (LISTA) ---
-                    summaryList.innerHTML = ""; 
-                    MESES.forEach((mesNombre, index) => {
-                        const data = mesesData[index];
-                        const li = document.createElement('li');
-                        li.className = "summary-item";
-                        if (data) {
-                            const netoColor = data.totalNetoMes >= 0 ? 'text-green-600' : 'text-red-600';
-                            const netoSigno = data.totalNetoMes >= 0 ? '+' : '';
-                            li.innerHTML = `
-                                <div class="flex-1">
-                                    <p class="text-lg font-bold text-gray-900">${mesNombre}</p>
-                                    <div class="flex flex-col sm:flex-row sm:gap-4 text-sm">
-                                       <span class="text-green-600">Sueldo: $${data.totalSueldoMes.toFixed(2)}</span>
-                                       <span class="text-red-600">Gasto: $${data.totalGastoMes.toFixed(2)}</span>
+                    
+                    // Renderizar lista de meses (solo si es anual)
+                    if (filtroMes === "annual") {
+                        summaryList.innerHTML = ""; 
+                        MESES.forEach((mesNombre, index) => {
+                            const data = mesesData[index];
+                            const li = document.createElement('li');
+                            li.className = "summary-item";
+                            if (data) {
+                                const netoColor = data.totalNetoMes >= 0 ? 'text-green-600' : 'text-red-600';
+                                const netoSigno = data.totalNetoMes >= 0 ? '+' : '';
+                                li.innerHTML = `
+                                    <div class="flex-1">
+                                        <p class="text-lg font-bold text-gray-900">${mesNombre}</p>
+                                        <div class="flex flex-col sm:flex-row sm:gap-4 text-sm">
+                                           <span class="text-green-600">Sueldo: $${data.totalSueldoMes.toFixed(2)}</span>
+                                           <span class="text-red-600">Gasto: $${data.totalGastoMes.toFixed(2)}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-sm text-gray-500">Balance</p>
-                                    <p class="text-lg font-bold font-mono ${netoColor}">${netoSigno}$${data.totalNetoMes.toFixed(2)}</p>
-                                </div>`;
-                        } else {
-                            li.innerHTML = `
-                                <div><p class="text-lg font-bold text-gray-400">${mesNombre}</p></div>
-                                <div class="text-right"><p class="text-lg font-mono text-gray-400">Sin datos</p></div>`;
-                        }
-                        summaryList.appendChild(li);
-                    });
-                    // --- Renderizar Totales Anuales ---
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-500">Balance</p>
+                                        <p class="text-lg font-bold font-mono ${netoColor}">${netoSigno}$${data.totalNetoMes.toFixed(2)}</p>
+                                    </div>`;
+                            } else {
+                                li.innerHTML = `
+                                    <div><p class="text-lg font-bold text-gray-400">${mesNombre}</p></div>
+                                    <div class="text-right"><p class="text-lg font-mono text-gray-400">Sin datos</p></div>`;
+                            }
+                            summaryList.appendChild(li);
+                        });
+                    }
+
+                    // Renderizar Totales
                     summaryTotalNeto.textContent = `${granTotalNeto >= 0 ? '+' : ''}$${granTotalNeto.toFixed(2)}`;
                     summaryTotalNeto.classList.toggle('text-green-400', granTotalNeto >= 0);
                     summaryTotalNeto.classList.toggle('text-red-400', granTotalNeto < 0);
                     summaryTotalGanado.textContent = `$${granTotalSueldo.toFixed(2)}`;
                     summaryTotalGastado.textContent = `-$${granTotalGasto.toFixed(2)}`;
-                    // --- Renderizar Gastos por Concepto (LISTA) ---
+                    
+                    // Renderizar Gastos por Concepto
                     summaryCategoryList.innerHTML = "";
                     const sortedGastos = Object.entries(gastosPorConcepto).sort((a, b) => b[1] - a[1]);
                     if (sortedGastos.length === 0) {
@@ -951,23 +1207,27 @@
                         sortedGastos.forEach(([concepto, total]) => {
                             const li = document.createElement('li');
                             li.className = "flex justify-between items-center py-2 border-b border-gray-100";
+                            li.dataset.concepto = concepto; // Data para el click
                             li.innerHTML = `
                                 <span class="text-base text-gray-800 capitalize">${concepto}</span>
                                 <span class="text-base font-mono font-bold text-red-600">-$${total.toFixed(2)}</span>`;
                             summaryCategoryList.appendChild(li);
                         });
                     }
-                    // --- Renderizar Gráfica ---
+                    
+                    // Renderizar Gráfica (Dona)
                     const chartLabels = sortedGastos.map(item => item[0]);
                     const chartData = sortedGastos.map(item => item[1]);
-                    dibujarGrafica(chartLabels, chartData);
+                    dibujarGraficaDona(chartLabels, chartData);
+
                 } catch (e) {
-                    console.error("Error cargando resumen anual: ", e);
+                    console.error("Error cargando resumen: ", e);
                     summaryList.innerHTML = `<li class="text-center text-red-500 py-8">Error al cargar resumen: ${e.message}</li>`;
                     summaryCategoryList.innerHTML = `<li class="text-center text-red-500 py-4">Error</li>`;
                 }
             }
-            function dibujarGrafica(labels, data) {
+            
+            function dibujarGraficaDona(labels, data) {
                 const ctx = chartCanvas.getContext('2d');
                 if (gastosChartInstance) { gastosChartInstance.destroy(); }
                 const bgColors = ['#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E'];
@@ -984,14 +1244,70 @@
                 });
             }
             
+            // --- NUEVO: Lógica de Gráfica de Tendencia ---
+            async function mostrarTendenciaDeGasto(concepto) {
+                tendenciaModalTitle.textContent = `Tendencia de: ${concepto.charAt(0).toUpperCase() + concepto.slice(1)}`;
+                tendenciaModal.classList.remove('hidden');
+                
+                let tendenciaData = new Array(12).fill(0);
+                try {
+                    const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
+                    const querySnapshot = await getDocs(q);
+                    
+                    querySnapshot.forEach(doc => {
+                        const mesIndex = parseInt(doc.id.split('-')[1], 10);
+                        const data = doc.data();
+                        let gastoMes = 0;
+                        (data.gastos || []).forEach(gasto => {
+                            if (!gasto.esPlaneado && gasto.concepto.toLowerCase() === concepto.toLowerCase()) {
+                                gastoMes += (gasto.montos || []).reduce((a, m) => a + (parseFloat(m) || 0), 0);
+                            }
+                        });
+                        tendenciaData[mesIndex] = gastoMes;
+                    });
+                    
+                    dibujarGraficaTendencia(tendenciaData);
+                    
+                } catch(e) {
+                    console.error("Error cargando tendencia:", e);
+                }
+            }
+            
+            function dibujarGraficaTendencia(data) {
+                const ctx = tendenciaChartCanvas.getContext('2d');
+                if (tendenciaChartInstance) { tendenciaChartInstance.destroy(); }
+                
+                tendenciaChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: MESES.map(m => m.substring(0,3)), // "Ene", "Feb", etc.
+                        datasets: [{
+                            label: 'Gasto Mensual',
+                            data: data,
+                            fill: false,
+                            borderColor: '#3B82F6', // blue-500
+                            backgroundColor: '#3B82F6',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            
             // --- LÓGICA DE AJUSTES (GASTOS FIJOS) ---
             function iniciarListenersAjustes() {
-                // BUG 3 (TRIPLE REGISTRO) FIX: Este listener ahora solo se añade UNA VEZ
                 gastoFijoForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const concepto = gastoFijoConcepto.value;
-                    const monto = parseFloat(gastoFijoMonto.value);
-                    const dia = parseInt(gastoFijoDia.value);
+                    const concepto = document.getElementById('gasto-fijo-concepto').value;
+                    const monto = parseFloat(document.getElementById('gasto-fijo-monto').value);
+                    const dia = parseInt(document.getElementById('gasto-fijo-dia').value);
                     if (!concepto || !monto || !dia) { alert("Por favor completa todos los campos."); return; }
                     try {
                         const newDocRef = doc(gastosFijosColRef);
@@ -999,8 +1315,6 @@
                         gastoFijoForm.reset();
                     } catch (e) { console.error("Error agregando gasto fijo:", e); alert("Error al guardar el gasto."); }
                 });
-                
-                // Este listener también se añade solo UNA VEZ
                 onSnapshot(query(gastosFijosColRef, orderBy("dia")), (snapshot) => {
                     gastosFijosLista.innerHTML = "";
                     if (snapshot.empty) {
@@ -1017,7 +1331,7 @@
                             </div>
                             <div class="flex items-center gap-4">
                                 <span class="log-monto font-bold font-mono">-$${data.monto.toFixed(2)}</span>
-                                <button class="delete-gasto-fijo-btn text-red-400 hover:text-red-600" data-id="${doc.id}">
+                                <button class="delete-gasto-fijo-btn text-red-400 hover:text-red-600" data-id="${doc.id}" data-concepto="${data.concepto}">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </div>`;
@@ -1030,7 +1344,7 @@
             popularMeses();
             dibujarGrid(monthSelect.value); // Llama inicial
             iniciarListenersCaja(); 
-            iniciarListenersAjustes(); // BUG 3 (TRIPLE REGISTRO) FIX: Llamar aquí UNA SOLA VEZ
+            iniciarListenersAjustes();
 
             // --- EVENT LISTENERS (GRID) ---
             monthSelect.addEventListener('change', (e) => dibujarGrid(e.target.value));
@@ -1044,13 +1358,9 @@
                     triggerSave();    
                 }
             });
-            
-            // --- Listener de Clicks en Grid MODIFICADO (FIX BUG 2) ---
             gridBody.addEventListener('click', (e) => {
-                // Listener para Borrar (ambos tipos de fila)
                 const deleteBtn = e.target.closest('.delete-gasto-btn');
                 if (deleteBtn) {
-                    // FIX: .closest('[data-row-type]') selecciona CUALQUIER fila (planeada o no)
                     const row = deleteBtn.closest('[data-row-type]'); 
                     if (row) {
                         row.remove();
@@ -1059,35 +1369,27 @@
                     }
                     return; 
                 }
-                
-                // Listener para Confirmar Gasto
                 const confirmBtn = e.target.closest('.confirm-gasto-btn');
                 if (confirmBtn) {
                     const row = confirmBtn.closest('[data-row-type="gasto-planeado"]');
-                    row.dataset.rowType = "gasto"; // Cambia tipo
-                    row.classList.remove('gasto-planeado'); // Quita estilo gris
-                    // Cambia concepto
+                    row.dataset.rowType = "gasto";
+                    row.classList.remove('gasto-planeado');
                     const conceptoInput = row.querySelector('input[type="text"]');
-                    // Cambia botón
                     const btnContainer = confirmBtn.parentElement;
                     btnContainer.innerHTML = `
                         <input type="text" value="${conceptoInput.value}" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 w-full focus:ring-blue-500 focus:border-blue-500 text-base">
                         <button class="delete-gasto-btn text-red-400 hover:text-red-600 p-1 rounded-full transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>`;
-                    // Cambia inputs de monto
                     row.querySelectorAll('[data-name="gasto-pre"]').forEach(input => {
                         input.dataset.name = "gasto-input";
                         input.readOnly = true;
                         input.className = "bg-yellow-100 border border-gray-300 text-gray-900 rounded-lg p-2 w-full text-right focus:ring-blue-500 focus:border-blue-500 font-mono text-base cursor-pointer hover:bg-yellow-200";
                     });
-                    
                     calcularTotales();
                     triggerSave();
                     return;
                 }
-                
-                // Listener para abrir Modal
                 const gastoInput = e.target.closest('[data-name="gasto-input"]');
                 if (gastoInput) { openItemModal(gastoInput); }
             });
@@ -1121,14 +1423,14 @@
             cajaModalSaveBtn.addEventListener('click', handleCajaSave);
             cajaModalMonto.addEventListener('input', () => {
                 const monto = parseFloat(cajaModalMonto.value) || 0;
-                const esRetiro = tipoMovimientoActual === 'retiro';
-                const tieneFondos = monto <= saldoActualGlobal;
-                cajaModalError.classList.toggle('hidden', !esRetiro || (esRetiro && tieneFondos));
-                cajaModalError.textContent = "Fondos insuficientes";
-                cajaModalSaveBtn.disabled = (esRetiro && !tieneFondos);
+                if (tipoMovimientoActual === 'retiro') {
+                    cajaModalError.classList.toggle('hidden', monto <= saldoCajaGlobal);
+                }
             });
 
-            // --- Listeners Resumen (Toggle) ---
+            // --- Listeners Resumen (NUEVOS) ---
+            resumenMonthFilter.addEventListener('change', cargarResumen);
+            
             toggleLista.addEventListener('click', () => {
                 summaryListaView.classList.remove('hidden');
                 summaryGraficaView.classList.add('hidden');
@@ -1142,59 +1444,53 @@
                 toggleGrafica.classList.add('active');
             });
             
+            // Listener para Gráfica de Tendencia
+            summaryCategoryList.addEventListener('click', (e) => {
+                const li = e.target.closest('li[data-concepto]');
+                if (li) {
+                    mostrarTendenciaDeGasto(li.dataset.concepto);
+                }
+            });
+            tendenciaModalCloseBtn.addEventListener('click', () => tendenciaModal.classList.add('hidden'));
+            
             // --- Listeners Ajustes (Delete) ---
             gastosFijosLista.addEventListener('click', async (e) => {
                 const deleteBtn = e.target.closest('.delete-gasto-fijo-btn');
                 if (deleteBtn) {
                     const docId = deleteBtn.dataset.id;
-                    // REEMPLAZO DE CONFIRM
-                    if (window.confirm("¿Seguro que quieres borrar este gasto fijo?")) {
+                    const concepto = deleteBtn.dataset.concepto;
+                    if (window.confirm(`¿Seguro que quieres borrar "${concepto}"? Esto lo quitará de tus recordatorios futuros.`)) {
                         try {
                             await deleteDoc(doc(gastosFijosColRef, docId));
-                            // Borrarlo de los meses ya cargados (si está como planeado)
-                            await actualizarMesesAbiertos(deleteBtn.closest('li').querySelector('.log-concepto').textContent.trim());
-                        } catch (e) {
-                            console.error("Error borrando gasto fijo:", e);
-                            alert("No se pudo borrar el gasto.");
-                        }
+                            await actualizarMesesAbiertos(concepto);
+                        } catch (e) { console.error("Error borrando gasto fijo:", e); }
                     }
                 }
             });
 
-            // --- NUEVA FUNCIÓN: Borrar gasto planeado de meses abiertos ---
             async function actualizarMesesAbiertos(concepto) {
                 if (!concepto) return;
                 const conceptoLower = concepto.toLowerCase();
-                
                 try {
-                    // Buscar en todos los registros del año
                     const q = query(registrosColRef, where(documentId(), '>=', `${AÑO_ACTUAL}-00`), where(documentId(), '<=', `${AÑO_ACTUAL}-11`));
                     const querySnapshot = await getDocs(q);
-                    
                     const batch = runTransaction(db, async (transaction) => {
                         for (const docSnap of querySnapshot.docs) {
                             const docData = docSnap.data();
                             if (docData.gastos && docData.gastos.length > 0) {
-                                // Filtrar el gasto planeado
                                 const gastosNuevos = docData.gastos.filter(g => {
                                     return !(g.esPlaneado && g.concepto.toLowerCase() === conceptoLower);
                                 });
-                                // Si hubo cambios, actualizar el doc
                                 if (gastosNuevos.length < docData.gastos.length) {
                                     transaction.update(docSnap.ref, { gastos: gastosNuevos });
                                 }
                             }
                         }
                     });
-                    
-                    // Si estamos en el mes actual, refrescar la vista
                     if (document.getElementById('register-view').classList.contains('hidden') === false) {
                         dibujarGrid(monthSelect.value);
                     }
-                    
-                } catch (e) {
-                    console.error("Error actualizando meses abiertos:", e);
-                }
+                } catch (e) { console.error("Error actualizando meses abiertos:", e); }
             }
         }
     </script>
